@@ -9,6 +9,7 @@ import { CircleCheck, Clock, HandCoins, Minus, Plus, Printer, ReceiptText, ScanB
 import { toast } from 'sonner'
 import { BadgeCmd, Carte, Chargement, Etoiles, Feuille, GrosBouton, Money, Vide, classeSaisie } from '@/components/gbs'
 import { BlocBoundary } from '@/components/ErrorBoundary'
+import { SelecteurLangue } from '@/components/SelecteurLangue'
 
 // Scanner chargé à la demande : @zxing (~450 Ko) ne pèse que sur
 // les utilisateurs qui ouvrent réellement la caméra
@@ -17,7 +18,6 @@ const ScanCodeBarres = lazy(() =>
 )
 import { dateHeure, fmtCDF, fmtUSD, ilYA, uid } from '@/lib/format'
 import { LogoGBS } from './Home'
-import { OngletBillardClient } from './Billard'
 import { OngletMaNote } from './MaNote'
 import {
   FournisseurPortee, annulerMaCommande, contexteTable, ecriturePermise, noterServeuse,
@@ -143,8 +143,8 @@ function VueClientInterne({ token, client, setClient }: {
 
   const { table, terrasse } = contexte
   const ecritureOk = ecriturePermise(db, terrasse.id)
-  const estBillard = table.kind === 'BILLARD'
-  const onglet = ongletChoisi ?? (estBillard ? 'billard' : 'menu')
+  const estBillard = false // Le billard est géré par le staff
+  const onglet = ongletChoisi ?? 'menu'
 
   // ---------- Étape 1 : prénom (une seule fois) ----------
   const demarrer = async () => {
@@ -310,8 +310,7 @@ function VueClientInterne({ token, client, setClient }: {
               {serveuse ? ` · ${t('client.servie_par', { nom: serveuse.nom.split(' ')[0]! })}` : ''}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {!enLigne && (
+          <div className="flex items-center gap-2">`n            <SelecteurLangue compact />`n            {!enLigne && (
               <span className="flex items-center gap-1 rounded-full bg-danger/15 px-2.5 py-1 text-xs font-semibold text-danger-clair">
                 <WifiOff className="h-3.5 w-3.5" /> {t('client.hors_ligne')}
               </span>
@@ -331,15 +330,13 @@ function VueClientInterne({ token, client, setClient }: {
           </div>
         </div>
         <div className="flex px-4 pb-2">
-          {(estBillard ? ['billard', 'menu', 'suivi', 'note'] as const : ['menu', 'suivi', 'note'] as const).map((o) => (
+          {(['menu', 'suivi', 'note'] as const).map((o) => (
             <button
               key={o}
               onClick={() => setOnglet(o)}
               className={`relative flex-1 py-2 text-sm font-bold ${onglet === o ? 'text-ambre' : 'text-sable/60'}`}
             >
-              {o === 'billard'
-                ? t('billard.onglet')
-                : o === 'menu'
+              {o === 'menu'
                   ? (estBillard ? t('billard.onglet_boissons') : t('client.la_carte'))
                   : o === 'note'
                     ? t('note.onglet')
@@ -367,9 +364,7 @@ function VueClientInterne({ token, client, setClient }: {
         </div>
       )}
 
-      {onglet === 'billard' ? (
-        <BlocBoundary><OngletBillardClient token={token} sessionId={client.sessionId} /></BlocBoundary>
-      ) : onglet === 'note' ? (
+      {onglet === 'note' ? (
         <BlocBoundary><OngletMaNote sessionId={client.sessionId} /></BlocBoundary>
       ) : onglet === 'menu' ? (
         <div className="px-4 pt-4">
