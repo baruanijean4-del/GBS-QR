@@ -40,22 +40,34 @@ let verifieLe = 0;
 export async function assurerSuperAdmin(): Promise<void> {
   if (Date.now() - verifieLe < 60_000) return;
   const db = getDb();
+  
+  // 1. Chercher si un utilisateur avec ce téléphone existe déjà (peu importe son ID)
   const [existant] = await db.select().from(s.utilisateurs)
-    .where(eq(s.utilisateurs.id, SUPER_ADMIN_ID)).limit(1);
+    .where(eq(s.utilisateurs.telephone, env.adminTelephone)).limit(1);
+    
   const dejaConforme = existant
     && existant.telephone === env.adminTelephone
     && dechiffrerPin(existant.pin) === env.adminPin;
+    
   if (!dejaConforme) {
-    await db.insert(s.utilisateurs).values({
-      id: SUPER_ADMIN_ID,
-      nom: "Super Admin",
-      telephone: env.adminTelephone,
-      pin: chiffrerPin(env.adminPin),
-      creeLe: new Date().toISOString(),
-    }).onConflictDoUpdate({
-      target: s.utilisateurs.id,
-      set: { telephone: env.adminTelephone, pin: chiffrerPin(env.adminPin) },
-    });
+    if (existant) {
+      // 2. L'utilisateur existe (peut-être avec un autre ID) : on met à jour
+      await db.update(s.utilisateurs)
+        .set({ 
+          nom: "Super Admin", 
+          pin: chiffrerPin(env.adminPin) 
+        })
+        .where(eq(s.utilisateurs.telephone, env.adminTelephone));
+    } else {
+      // 3. L'utilisateur n'existe pas : on l'insère
+      await db.insert(s.utilisateurs).values({
+        id: SUPER_ADMIN_ID,
+        nom: "Super Admin",
+        telephone: env.adminTelephone,
+        pin: chiffrerPin(env.adminPin),
+        creeLe: new Date().toISOString(),
+      });
+    }
   }
   verifieLe = Date.now();
 }
