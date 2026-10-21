@@ -26,6 +26,7 @@ import {
 } from '@/lib/store'
 import type { Commande, LigneCommande, Portee, Produit } from '@/lib/types'
 import { TYPES_RECHERCHE_PRODUIT } from '@/lib/types'
+import { defFusionnee } from '@contracts/types'
 import { useT } from '@/i18n'
 import { ajouterALaFile, lireFile, retirerDeLaFile } from '@/lib/outbox'
 
@@ -77,7 +78,7 @@ function VueClientInterne({ token, client, setClient }: {
   // reste accessible via l'onglet « Boissons ». Sinon : menu classique.
   // null = pas encore de choix explicite → l'onglet par défaut dépend
   // du kind de la table (connu seulement après le premier snapshot).
-  const [ongletChoisi, setOnglet] = useState<'billard' | 'menu' | 'suivi' | 'note' | null>(null)
+  const [ongletChoisi, setOnglet] = useState<'BILLARD_FILE' | 'menu' | 'suivi' | 'note' | 'chambre' | null>(null)
   const [cleCommande, setCleCommande] = useState(() => uid('cle'))
   const [scan, setScan] = useState(false)
   const [recherche, setRecherche] = useState('')
@@ -144,8 +145,23 @@ function VueClientInterne({ token, client, setClient }: {
 
   const { table, terrasse } = contexte
   const ecritureOk = ecriturePermise(db, terrasse.id)
-  const estBillard = table.kind === 'BILLARD'
-  const onglet = ongletChoisi ?? (estBillard ? 'billard' : 'menu')
+  // Multi-métiers : on lit le registre de l'établissement
+  const definition = defFusionnee(terrasse.type, terrasse.typesSecondaires ?? [])
+  const estBillard = table.kind === 'BILLARD' || definition.modules.includes('BILLARD_FILE')
+  const estHotel = definition.modules.includes('CHAMBRES')
+  const estRestaurant = definition.modules.includes('CUISINE_BAR')
+
+  const ongletsDisponibles: { id: string; label: string }[] = []
+  if (estBillard) ongletsDisponibles.push({ id: 'BILLARD_FILE', label: t('billard.onglet') })
+  if (estHotel) ongletsDisponibles.push({ id: 'chambre', label: t('hotel.onglet_chambre') || 'Ma chambre' })
+  if (!estHotel || estRestaurant || !estBillard) {
+    ongletsDisponibles.push({ id: 'menu', label: t('client.la_carte') })
+  }
+  ongletsDisponibles.push({ id: 'suivi', label: t('client.mes_commandes') })
+  ongletsDisponibles.push({ id: 'note', label: t('note.onglet') })
+
+  const ongletDefaut = estBillard ? 'BILLARD_FILE' : (estHotel ? 'chambre' : 'menu')
+  const onglet = ongletChoisi ?? ongletDefaut
 
   // ---------- Étape 1 : prénom (une seule fois) ----------
   const demarrer = async () => {
@@ -339,7 +355,7 @@ function VueClientInterne({ token, client, setClient }: {
           </div>
         </div>
         <div className="flex px-4 pb-2">
-          {(estBillard ? ['billard', 'menu', 'suivi', 'note'] as const : ['menu', 'suivi', 'note'] as const).map((o) => (
+          {(estBillard ? ['BILLARD_FILE', 'menu', 'suivi', 'note'] as const : ['menu', 'suivi', 'note'] as const).map((o) => (
             <button
               key={o}
               onClick={() => setOnglet(o)}
@@ -373,8 +389,19 @@ function VueClientInterne({ token, client, setClient }: {
         </div>
       )}
 
-      {onglet === 'billard' ? (
+      {onglet === 'BILLARD_FILE' ? (
         <BlocBoundary><OngletBillardClient token={token} sessionId={client.sessionId} /></BlocBoundary>
+      ) : onglet === 'chambre' ? (
+        <div className="px-4 pt-4">
+          <Carte>
+            <p className="text-lg font-bold text-white">Chambre {table.numero}</p>
+            <p className="mt-1 text-sm text-sable/70">{terrasse.nom}</p>
+            <div className="mt-4 flex flex-col gap-2">
+              <GrosBouton onClick={() => setOnglet('menu')}>Commander le petit-déjeuner</GrosBouton>
+              <GrosBouton ton="secondaire" onClick={() => toast.info('Appel à la réception envoyé.')}>Appeler la réception</GrosBouton>
+            </div>
+          </Carte>
+        </div>
       ) : onglet === 'note' ? (
         <BlocBoundary><OngletMaNote sessionId={client.sessionId} /></BlocBoundary>
       ) : onglet === 'menu' ? (
