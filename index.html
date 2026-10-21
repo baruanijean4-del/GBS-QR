@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#14161d" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="GBS — commande QR, stock, dépôts et alertes fraude pour les terrasses de Lubumbashi." />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <!-- Inter est auto-hébergée (/fonts/inter-latin.woff2, voir index.css) :
+         aucune dépendance à Google Fonts (CSP stricte + mode hors-ligne).
+         JetBrains Mono (chiffres) n'est PAS préchargée : l'accueil s'en
+         passe, les écrans staff la chargent à l'usage (font-display:
+         optional — voir index.css pour le choix anti-CLS). -->
+    <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Bricolage Grotesque 800 : police du titre d'accueil = élément LCP
+         mesuré par Lighthouse — préchargée pour ne pas attendre la CSS. -->
+    <link rel="preload" href="/fonts/bricolage-grotesque-800-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <title>GBS — Gestion de terrasses</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <!-- Le service worker est enregistré dans src/lib/pwa.ts (avec garde
+         dev) — ne JAMAIS rajouter un enregistrement inline ici. -->
+  </body>
+</html>

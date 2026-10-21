@@ -1,0 +1,34 @@
+/* ============================================================
+   GBS / Nganda POS — design-tokens.css
+   Source unique des couleurs de marque (copie canonique de
+   src/index.css). Toute couleur de l'interface passe par ces
+   tokens — aucune valeur hex en dur dans les écrans.
+
+   Usage Tailwind : bg-ambre, text-sable, bg-danger/15…
+   (triplets RVB + <alpha-value> dans tailwind.config.js)
+   ============================================================ */
+
+:root {
+  /* ── Marque (existante, sacrée) ── */
+  --ambre: 247 160 38;        /* #F7A026 — action principale, signature */
+  --ambre-actif: 224 143 26;  /* #E08F1A — état pressé */
+  --sur-ambre: 26 19 5;       /* #1A1305 — texte sur fond ambre */
+  --encre: 20 23 31;          /* #14171F — fond principal */
+  --surface: 28 33 48;        /* #1C2130 — cartes, panneaux */
+  --sable: 215 198 173;       /* #D7C6AD — texte secondaire */
+  --creme: 245 241 232;       /* #F5F1E8 — texte principal */
+
+  /* ── Fonctionnelles ── */
+  --danger: 224 90 78;        /* #E05A4E — erreurs, stock bas */
+  --danger-clair: 232 138 128;/* #E88A80 — texte danger sur fond sombre */
+  --succes: 69 178 107;       /* #45B26B — confirmations */
+  --succes-clair: 111 206 147;/* #6FCE93 — texte succès sur fond sombre */
+  --info: 110 143 199;        /* #6E8FC7 — informations */
+  --info-clair: 157 184 232;  /* #9DB8E8 — texte info sur fond sombre */
+
+  /* ── Forme ── */
+  --radius: 1rem;             /* rayon principal (boutons, cartes) */
+}
+
+/* Typographie : Inter (400/600/700/800/900), échelle 12/14/16/20/28/40.
+   Élément mémorable : le G encre sur ambre — icône, favicon, maskable. */

@@ -1,0 +1,2 @@
+ALTER TABLE "tokens" ADD COLUMN "reference_mobile" varchar(30);--> statement-breakpoint
+CREATE UNIQUE INDEX "uq_tokens_reference_mobile" ON "tokens" USING btree ("terrasse_id","reference_mobile") WHERE reference_mobile IS NOT NULL;

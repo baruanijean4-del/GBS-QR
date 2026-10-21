@@ -1,0 +1,40 @@
+# ============================================================
+# GBS / Nganda POS — Blueprint Render (Infrastructure as Code)
+#
+# AUCUN SECRET dans ce fichier : les valeurs sensibles sont
+# déclarées « sync: false » et se saisissent une fois dans le
+# tableau de bord Render (Environment → Secret Files / Env Vars).
+# Voir docs/DEPLOIEMENT-RENDER.md pour le guide pas à pas.
+# ============================================================
+
+services:
+  - type: web
+    name: gbs-nganda
+    runtime: node
+    region: frankfurt        # région Render la plus proche de Lubumbashi
+    plan: starter            # le plan gratuit s'endort : inadapté à un POS
+    buildCommand: npm ci && npm run build
+    startCommand: npm start  # = NODE_ENV=production node dist/boot.js
+    healthCheckPath: /api/trpc/ping
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # --- Secrets : saisie manuelle dans le tableau de bord ---
+      - key: DATABASE_URL    # Neon, rôle applicatif, sslmode=require
+        sync: false
+      - key: ADMIN_PIN       # PIN super-admin plateforme (8+ caractères)
+        sync: false
+      - key: ADMIN_TELEPHONE # numéro technique du super-admin
+        sync: false
+      - key: SESSION_SECRET  # openssl rand -base64 48 (32+ caractères)
+        sync: false
+      - key: PIN_ENC_KEY     # openssl rand -hex 32 (64 hex EXACTEMENT,
+        sync: false          #  DISTINCTE de SESSION_SECRET)
+      - key: SENTRY_DSN      # optionnel — laisser vide si non utilisé
+        sync: false
+      # --- Non sensibles ---
+      - key: SESSION_GLISSANTE
+        value: "1"
+      # NE JAMAIS définir ANNUAIRE_DEMO ici : sa présence en
+      # production fait REFUSER le démarrage (garde boucle 8).
+      # PORT est fourni automatiquement par Render (lu par boot.ts).

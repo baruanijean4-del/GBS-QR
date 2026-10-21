@@ -1,0 +1,1 @@
+ALTER TABLE "utilisateurs" ALTER COLUMN "pin" SET DATA TYPE varchar(120);

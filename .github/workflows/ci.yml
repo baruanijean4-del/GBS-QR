@@ -1,0 +1,53 @@
+# ============================================================
+# GBS — Intégration continue
+# À chaque push sur main et sur chaque pull request :
+# vérification TypeScript, suite de tests (base Neon de CI),
+# build de production. Un job rouge = ne pas déployer.
+# ============================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      # La baseline ESLint historique (react-refresh) n'est pas bloquante ;
+      # durcir ici une fois la dette résorbée.
+      - name: Lint (informatif)
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Vérification TypeScript
+        run: npm run check
+
+      # Les tests frappent une vraie base Neon dédiée à la CI
+      # (les suites créent leurs propres fixtures et les nettoient).
+      - name: Tests
+        run: npm test
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+
+      - name: Build de production
+        run: npm run build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

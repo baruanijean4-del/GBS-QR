@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "GBS — Gestion de terrasses",
+  "short_name": "GBS",
+  "description": "Commande QR, stock, dépôts et alertes fraude pour les terrasses de Lubumbashi.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14161d",
+  "theme_color": "#14161d",
+  "lang": "fr",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

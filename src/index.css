@@ -1,0 +1,220 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Inter auto-hébergée (variable, sous-ensemble latin, 48 Ko) : aucune
+   requête vers Google Fonts — la CSP (fontSrc 'self') est respectée et
+   l'app garde sa typographie hors-ligne et sur réseau instable.
+
+   font-display: optional (et non swap) sur les quatre familles : le titre
+   de l'accueil est l'élément LCP, et le basculement tardif de swap
+   provoquait un décalage de mise en page (CLS 0,045 mesuré au Lighthouse).
+   Avec optional, la fenêtre de blocage est courte (~100 ms) : la police
+   préchargée est là à temps, sinon le repli système est conservé pour ce
+   chargement — aucun swap, aucun décalage. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: optional;
+  src: url('/fonts/inter-latin.woff2') format('woff2');
+}
+
+/* Polices de la page d'accueil (maquette) : Bricolage Grotesque pour les
+   titres (graisse 800, axe optique variable), Instrument Sans pour le corps
+   (variable 400-700). Auto-hébergées, sous-ensemble latin (couvre le
+   français) — respect de la CSP et hors-ligne. */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 800;
+  font-display: optional;
+  src: url('/fonts/bricolage-grotesque-800-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Instrument Sans';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: optional;
+  src: url('/fonts/instrument-sans-latin.woff2') format('woff2');
+}
+
+/* JetBrains Mono (variable, sous-ensemble latin, 40 Ko) : chiffres des
+   montants, taux et compteurs — maquette boucle 7 (--fn). Auto-hébergée :
+   CSP fontSrc 'self' respectée, disponible hors-ligne. */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: optional;
+  src: url('/fonts/jetbrains-mono-latin.woff2') format('woff2');
+}
+
+@layer base {
+  :root {
+    --background: 227 18% 10%;
+    --foreground: 40 30% 96%;
+    --card: 225 14% 17%;
+    --card-foreground: 40 30% 96%;
+    --popover: 225 14% 17%;
+    --popover-foreground: 40 30% 96%;
+    --primary: 37 92% 55%;
+    --primary-foreground: 30 60% 6%;
+    --secondary: 222 15% 20%;
+    --secondary-foreground: 40 30% 96%;
+    --muted: 222 15% 20%;
+    --muted-foreground: 37 28% 76%;
+    --accent: 37 92% 55%;
+    --accent-foreground: 30 60% 6%;
+    --destructive: 8 70% 59%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 222 14% 22%;
+    --input: 222 14% 22%;
+    --ring: 37 92% 55%;
+    --radius: 1rem;
+
+    /* ── Tokens de marque GBS (source unique des couleurs) ──────────
+       Triplet RVB pour compatibilité avec les modificateurs d'opacité
+       Tailwind (bg-ambre/30…). Boucle 7 : palette officielle du prompt
+       maître et de la maquette Pilotage (#14161D / #262932 / #F6A01F,
+       succès #4FD18B, info #8FA6D0, danger #FF7A7A, contrôles #2F3545). */
+    --ambre: 246 160 31;        /* #F6A01F — action principale, signature */
+    --ambre-actif: 223 142 29;  /* #DF8E1D — état pressé */
+    --sur-ambre: 27 18 3;       /* #1B1203 — texte sur fond ambre */
+    --encre: 20 22 29;          /* #14161D — fond principal */
+    --surface: 38 41 50;        /* #262932 — cartes, panneaux */
+    --controle: 47 53 69;       /* #2F3545 — fond des contrôles secondaires */
+    --sable: 215 198 173;       /* #D7C6AD — texte secondaire */
+    --creme: 245 241 232;       /* #F5F1E8 — texte principal */
+    --danger: 255 122 122;      /* #FF7A7A — erreurs, stock bas */
+    --danger-clair: 255 160 160;/* #FFA0A0 — texte danger sur fond sombre */
+    --succes: 79 209 139;       /* #4FD18B — confirmations */
+    --succes-clair: 140 231 184;/* #8CE7B8 — texte succès sur fond sombre */
+    --info: 143 166 208;        /* #8FA6D0 — informations */
+    --info-clair: 180 200 231;  /* #B4C8E7 — texte info sur fond sombre */
+  }
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: rgb(var(--encre));
+  color: rgb(var(--creme));
+  font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+.font-mono {
+  /* Chiffres en JetBrains Mono tabulaire (maquette : --fn + tabular-nums) —
+     les colonnes de montants ne « dansent » plus quand les chiffres changent */
+  font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Barre de défilement discrète, ambre sur fond sombre */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #f6a01f55;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::selection {
+  background: rgba(246, 160, 31, 0.35);
+}
+
+/* Écran de démarrage : léger halo lanterne */
+.halo-lanterne {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(246, 160, 31, 0.18), transparent 70%),
+    #14161d;
+}
+
+/* Animation d'arrivée d'une commande */
+@keyframes arrivee {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.anim-arrivee {
+  animation: arrivee 0.35s ease-out;
+}
+
+@keyframes pulsation {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.anim-pulsation {
+  animation: pulsation 1.6s ease-in-out infinite;
+}
+
+/* Page d'accueil : arrivée douce de la maquette téléphone (maquette) */
+@keyframes entree-telephone {
+  from {
+    opacity: 0;
+    transform: translateY(24px) rotate(2.5deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(2.5deg);
+  }
+}
+.anim-telephone {
+  animation: entree-telephone 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Accessibilité : l'utilisateur peut demander moins d'animations
+   (réglage système) — on désactive alors tout mouvement décoratif */
+@media (prefers-reduced-motion: reduce) {
+  .anim-arrivee,
+  .anim-pulsation,
+  .anim-telephone {
+    animation: none;
+  }
+}
+
+/* Accessibilité : indicateur de focus visible au clavier sur tous les
+   éléments interactifs (les composants peuvent le surcharger) */
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Impression : QR codes et rapports sur fond blanc */
+@media print {
+  /* Seule la zone d'impression (portalée au niveau de <body>) est imprimée :
+     l'interface sombre est entièrement masquée */
+  #root {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .pas-impression {
+    display: none !important;
+  }
+  .zone-impression {
+    display: block !important;
+    color: #000 !important;
+    background: #fff !important;
+  }
+  .zone-impression * {
+    color: #000 !important;
+    border-color: #ccc !important;
+  }
+}

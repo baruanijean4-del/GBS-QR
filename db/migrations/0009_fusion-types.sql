@@ -1,0 +1,1 @@
+ALTER TABLE "terrasses" ADD COLUMN "types_secondaires" jsonb DEFAULT '[]'::jsonb NOT NULL;

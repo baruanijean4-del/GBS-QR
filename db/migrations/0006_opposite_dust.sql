@@ -1,0 +1,1 @@
+ALTER TABLE "organisations" ADD COLUMN "langue" varchar(2) DEFAULT 'fr' NOT NULL;
