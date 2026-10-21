@@ -1,45 +1,25 @@
-﻿#!/bin/sh
-# Entrypoint Docker â€” initialise le schÃ©ma de faÃ§on sÃ»re, puis lance le serveur.
-#
-# RÃ¨gles :
-#  - Base vide  â†’ on applique les migrations versionnÃ©es (drizzle-kit migrate),
-#    jamais `push --force` aveuglÃ©ment sur une base existante.
-#  - Base existante â†’ on ne touche Ã  rien (les migrations se gÃ¨rent Ã  la main,
-#    voir db/migrations/README.md).
-#  - Si DATABASE_URL est absent ou la vÃ©rification Ã©choue, on dÃ©marre quand mÃªme
-#    le serveur : l'erreur de connexion remontera via l'API.
+#!/bin/sh
 set -e
 
-echo "[entrypoint] vÃ©rification du schÃ©ma de baseâ€¦"
+echo "[entrypoint] vérification du schéma de base…"
 
-if [ -z "$DATABASE_URL" ]; then
-  echo "[entrypoint] DATABASE_URL absent â€” dÃ©marrage sans initialisation de schÃ©ma."
+DB_EMPTY=$(node -e "
+const postgres = require('postgres');
+const sql = postgres(process.env.DATABASE_URL, { ssl: 'require', max: 1 });
+sql`SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema = 'public'`
+  .then(r => { console.log(r[0].n === 0 ? 'oui' : 'non'); return sql.end(); })
+  .catch(e => { console.error(e.message); process.exit(1); });
+" 2>/dev/null || echo "erreur")
+
+echo "[entrypoint] base vide : $DB_EMPTY"
+
+if [ "$DB_EMPTY" = "oui" ]; then
+    echo "[entrypoint] application des migrations initiales…"
+    ./node_modules/.bin/drizzle-kit migrate
+    echo "[entrypoint] migrations appliquées."
 else
-  BASE_VIDE=$(node -e '
-    const postgres = require("postgres");
-    const sql = postgres(process.env.DATABASE_URL, { prepare: false });
-    sql`
-      SELECT COUNT(*)::int AS n
-      FROM information_schema.tables
-      WHERE table_schema = ${"public"}
-        AND table_name = ${"organisations"}
-    `.then((r) => {
-      console.log(r[0].n === 0 ? "oui" : "non");
-      return sql.end();
-    }).catch((e) => {
-      console.error("[entrypoint] vÃ©rification impossible :", e.message);
-      console.log("inconnu");
-      return sql.end().catch(() => {});
-    });
-  ')
-  echo "[entrypoint] base vide : $BASE_VIDE"
-
-  if [ "$BASE_VIDE" = "oui" ]; then
-    echo "[entrypoint] application des migrations initialesâ€¦"
-    npx --no-install drizzle-kit migrate
-    echo "[entrypoint] migrations appliquÃ©es."
-  fi
+    echo "[entrypoint] base existante — migrations non appliquées automatiquement."
 fi
 
-echo "[entrypoint] dÃ©marrage du serveurâ€¦"
+echo "[entrypoint] démarrage du serveur…"
 exec node dist/boot.js
