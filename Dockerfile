@@ -39,3 +39,4 @@ EXPOSE 3000
 # Initialise le schÃƒÂ©ma si la base est vide (migrations versionnÃƒÂ©es), puis dÃƒÂ©marre
 # le serveur (front statique + API tRPC). Voir scripts/docker-entrypoint.sh.
 CMD ["sh", "./scripts/docker-entrypoint.sh"]
+# Force rebuild 20261021140506
