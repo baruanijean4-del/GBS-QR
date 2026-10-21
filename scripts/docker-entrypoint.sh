@@ -15,7 +15,7 @@ echo "[entrypoint] base vide : $DB_EMPTY"
 
 if [ "$DB_EMPTY" = "oui" ]; then
     echo "[entrypoint] application des migrations initiales..."
-    npx --yes drizzle-kit migrate
+    drizzle-kit migrate
     echo "[entrypoint] migrations appliquees."
 else
     echo "[entrypoint] base existante - migrations non appliquees automatiquement."
