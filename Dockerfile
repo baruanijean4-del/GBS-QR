@@ -28,7 +28,7 @@ ENV PORT=3000
 COPY package.json package-lock.json ./
 # drizzle-kit sert uniquement ÃƒÂ  appliquer les migrations au dÃƒÂ©marrage
 # (voir scripts/docker-entrypoint.sh) ; le serveur, lui, est autonome.
-RUN npm ci --omit=dev && npm install --no-save drizzle-kit drizzle-orm
+RUN npm ci --omit=dev && npm install --no-save drizzle-kit drizzle-orm drizzle-orm
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=build /app/db ./db
