@@ -101,7 +101,7 @@ export function NouvelEtablissement() {
               <input className={classeSaisie} value={telephone} onChange={(e) => setTelephone(e.target.value)} placeholder={t('inscr.tel_ph')} inputMode="tel" />
             </Champ>
             <Champ label={t('inscr.pin')} aide={t('inscr.pin_aide')}>
-              <input className={`${classeSaisie} font-mono tracking-[0.5em]`} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="••••" inputMode="numeric" type="password" />
+              <input className={`${classeSaisie} font-mono tracking-[0.5em]`} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 8))} placeholder="••••" inputMode="numeric" type="password" />
             </Champ>
           </div>
         </Carte>
@@ -255,7 +255,7 @@ export function Invitation() {
             <input className={classeSaisie} value={telephone} onChange={(e) => setTelephone(e.target.value)} placeholder={t('inscr.tel_ph')} inputMode="tel" />
           </Champ>
           <Champ label={t('invit.pin')}>
-            <input className={`${classeSaisie} font-mono tracking-[0.5em]`} type="password" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="••••" inputMode="numeric" />
+            <input className={`${classeSaisie} font-mono tracking-[0.5em]`} type="password" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 8))} placeholder="••••" inputMode="numeric" />
           </Champ>
           <GrosBouton
             onClick={async () => {
@@ -369,7 +369,7 @@ export function Connexion() {
               inputMode="numeric"
               autoComplete="current-password"
               value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
               onKeyDown={(e) => e.key === 'Enter' && void entrer()}
               placeholder="••••"
             />

@@ -53,7 +53,7 @@ function PorteAdmin({ surPin }: { surPin: (pin: string) => void }) {
       <input
         className={`${classeSaisie} text-center font-mono tracking-[0.5em]`}
         type="password" inputMode="numeric" value={pin} placeholder="••••"
-        onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+        onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 8))}
         onKeyDown={(e) => { if (e.key === 'Enter') void entrer() }}
       />
       <GrosBouton onClick={() => void entrer()}>{chargement ? t('admin.verification') : t('admin.entrer')}</GrosBouton>
