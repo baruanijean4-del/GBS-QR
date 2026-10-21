@@ -64,7 +64,7 @@ export async function assurerSuperAdmin(): Promise<void> {
         throw erreur; // On relance l'erreur après la dernière tentative
       }
       
-      // Attendre 2 secondes avant de réessayer (laisse le temps à Neon de se réveiller)
+      // Attendre 2 secondes avant de réessayer
       console.log("[superAdmin] Attente de 2s avant nouvelle tentative...");
       await attendre(2000);
     }
