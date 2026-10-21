@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-echo "[entrypoint] vérification du schéma de base…"
+echo "[entrypoint] verification du schema de base..."
 
 DB_EMPTY=$(node -e "
 const postgres = require('postgres');
@@ -14,12 +14,12 @@ sql`SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema 
 echo "[entrypoint] base vide : $DB_EMPTY"
 
 if [ "$DB_EMPTY" = "oui" ]; then
-    echo "[entrypoint] application des migrations initiales…"
+    echo "[entrypoint] application des migrations initiales..."
     ./node_modules/.bin/drizzle-kit migrate
-    echo "[entrypoint] migrations appliquées."
+    echo "[entrypoint] migrations appliquees."
 else
-    echo "[entrypoint] base existante — migrations non appliquées automatiquement."
+    echo "[entrypoint] base existante - migrations non appliquees automatiquement."
 fi
 
-echo "[entrypoint] démarrage du serveur…"
+echo "[entrypoint] demarrage du serveur..."
 exec node dist/boot.js
