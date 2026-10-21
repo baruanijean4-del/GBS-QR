@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 # GBS â€” Image Docker (usage hors plateforme K3)
 #
 # NOTE : la plateforme de dÃ©ploiement principale n'utilise PAS ce
