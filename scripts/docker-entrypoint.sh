@@ -3,14 +3,22 @@ set -e
 
 echo "[entrypoint] verification du schema de base..."
 
-DB_EMPTY=$(node -e "
-const postgres = require('postgres');
+# Écrire le script JS dans un fichier temporaire pour éviter les problèmes de quoting shell
+cat > /tmp/check-db.mjs <<'EOF'
+import postgres from 'postgres';
 const sql = postgres(process.env.DATABASE_URL, { ssl: 'require', max: 1 });
-sql`SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema = 'public'`
-  .then(r => { console.log(r[0].n === 0 ? 'oui' : 'non'); return sql.end(); })
-  .catch(e => { console.error(e.message); process.exit(1); });
-" 2>/dev/null || echo "erreur")
+try {
+  const result = await sql`SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema = 'public'`;
+  console.log(result[0].n === 0 ? 'oui' : 'non');
+} catch (e) {
+  console.error(e.message);
+  process.exit(1);
+} finally {
+  await sql.end();
+}
+EOF
 
+DB_EMPTY=$(node /tmp/check-db.mjs 2>/dev/null || echo "erreur")
 echo "[entrypoint] base vide : $DB_EMPTY"
 
 if [ "$DB_EMPTY" = "oui" ]; then
