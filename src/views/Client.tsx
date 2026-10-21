@@ -300,33 +300,41 @@ function VueClientInterne({ token, client, setClient }: {
     <div className="mx-auto min-h-dvh max-w-[430px] pb-28">
       {/* En-tête terrasse */}
       <header className="sticky top-0 z-30 border-b border-white/5 bg-encre/90 backdrop-blur-md">
-        <div className="flex min-h-16 items-center justify-between px-4">
-          <div>
-            <p className="text-lg font-bold text-white">{terrasse.nom}</p>
-            <p className="text-xs text-sable/70">
-              {estBillard
-                ? t('billard.zone_numero', { numero: table.numero })
-                : t('client.table', { numero: table.numero })}
-              {serveuse ? ` · ${t('client.servie_par', { nom: serveuse.nom.split(' ')[0]! })}` : ''}
-            </p>
+        <div className="flex flex-col gap-2 px-4 py-2">
+          {/* Ligne 1 : Nom de l'établissement + Table + Langue */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-lg font-bold text-white">{terrasse.nom}</p>
+              <p className="truncate text-xs text-sable/70">
+                {estBillard
+                  ? t('billard.zone_numero', { numero: table.numero })
+                  : t('client.table', { numero: table.numero })}
+                {serveuse ? ` · ${t('client.servie_par', { nom: serveuse.nom.split(' ')[0]! })}` : ''}
+              </p>
+            </div>
+            <div className="shrink-0">
+              <SelecteurLangue compact />
+            </div>
           </div>
-          <div className="flex items-center gap-2">`n            <SelecteurLangue compact />`n            {!enLigne && (
+
+          {/* Ligne 2 : Actions (Scan, Prénom, Hors ligne) */}
+          <div className="flex items-center justify-end gap-2">
+            {!enLigne && (
               <span className="flex items-center gap-1 rounded-full bg-danger/15 px-2.5 py-1 text-xs font-semibold text-danger-clair">
                 <WifiOff className="h-3.5 w-3.5" /> {t('client.hors_ligne')}
               </span>
             )}
-            {/* Scan code-barres : ajout direct au panier (boutique/comptoir) */}
             {ecritureOk && (
               <button
                 type="button"
                 onClick={() => setScan(true)}
                 aria-label={t('client.scan_aria')}
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-white/8 text-sable transition-colors focus-visible:ring-2 focus-visible:ring-ambre/60 active:bg-white/15"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/8 text-sable transition-colors focus-visible:ring-2 focus-visible:ring-ambre/60 active:bg-white/15"
               >
-                <ScanBarcode className="h-5 w-5" />
+                <ScanBarcode className="h-4 w-4" />
               </button>
             )}
-            <span className="rounded-full bg-white/8 px-3 py-1.5 text-sm font-semibold text-sable">{client.prenom}</span>
+            <span className="truncate rounded-full bg-white/8 px-3 py-1 text-sm font-semibold text-sable">{client.prenom}</span>
           </div>
         </div>
         <div className="flex px-4 pb-2">
