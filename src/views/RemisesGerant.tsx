@@ -24,12 +24,12 @@ export function PanneauRemisesGerant({ terrasseId }: { terrasseId: string }) {
   const [remiseChoisie, setRemiseChoisie] = useState<string | null>(null)
   const [plafond, setPlafond] = useState<string>(() => {
     const ter = db.terrasses.find((x) => x.id === terrasseId)
-    return ter?.notePlafondCdf ? String(ter.notePlafondCdf) : ''
+    return (ter as any)?.notePlafondCdf ? String((ter as any).notePlafondCdf) : ''
   })
   const remises = trpc.notes.remisesEnAttente.useQuery({ terrasseId }, { refetchInterval: 5000 })
   const configMutation = trpc.notes.configurerNote.useMutation()
   const terrasse = db.terrasses.find((x) => x.id === terrasseId)
-  const [tokenSurNote, setTokenSurNote] = useState<boolean>(terrasse?.tokenSurNote ?? false)
+  const [tokenSurNote, setTokenSurNote] = useState<boolean>((terrasse as any)?.tokenSurNote ?? false)
 
   if (remises.isPending) return <Chargement />
   if (remises.error || !remises.data) {

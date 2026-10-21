@@ -272,8 +272,8 @@ export const TYPES_ETABLISSEMENT: Record<TypeEtablissement, TypeEtablissementDef
   BILLARD: {
     type: "BILLARD",
     modules: ["MENU", "COMMANDES", "STOCK", "CAISSE", "ALERTES", "BILLARD_FILE", "CATALOGUE"],
-    zone: { fr: "billard", en: "pool table", pt: "bilhar" },
-    zones: { fr: "billards", en: "pool tables", pt: "bilhares" },
+    zone: { fr: "billard", en: "pool table", pt: "bilhar", sw: "billiard" },
+    zones: { fr: "billards", en: "pool tables", pt: "bilhares", sw: "billiards" },
     qrAutorises: ["BILLARD"],
     roles: ["GERANT", "BILLARDIER", "SERVEUSE", "CAISSIER"],
     widgets: ["file_billard", "caisse_jour", "ventes_jour", "alertes"],

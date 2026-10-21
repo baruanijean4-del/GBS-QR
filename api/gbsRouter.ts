@@ -363,7 +363,7 @@ export const gbsRouter = createRouter({
    *  il relève d'une réinitialisation (accord du propriétaire). */
   rechercherCompte: publicQuery
     .input(z.object({ pinAdmin: z.string(), telephone: z.string().min(6).max(30) }))
-    .query(async ({ input }) => {
+    .mutation(async ({ input }) => {
       exigerAdmin(input.pinAdmin);
       const chiffres = localDe(input.telephone);
       const tous = await db().select().from(s.utilisateurs);
@@ -1028,7 +1028,7 @@ export const gbsRouter = createRouter({
   ajusterStock: protegee
     .input(z.object({
       produitId: z.string(),
-      type: z.enum(["ENTREE", "PERTE", "INVENTAIRE", "AJUSTEMENT"]),
+      type: z.enum(["ENTREE", "PERTE", "INVENTAIRE", "AJUSTEMENT", "TRAITEUR"]),
       quantite: z.number().int(), motif: z.string().max(200),
     }))
     .mutation(async ({ input, ctx }) => {

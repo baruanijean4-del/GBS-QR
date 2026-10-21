@@ -730,7 +730,7 @@ function exporterComplet(
     // JAMAIS de PIN dans un export (règle sécurité permanente)
     utilisateurs: db.utilisateurs.filter((u) => idsMembres.has(u.id)).map((u) => {
       const copie: Partial<Utilisateur> = { ...u }
-      delete copie.pin
+      delete (copie as { pin?: unknown }).pin
       return copie
     }),
     affectations: db.affectations.filter((x) => idsTerrasses.has(x.terrasseId)),

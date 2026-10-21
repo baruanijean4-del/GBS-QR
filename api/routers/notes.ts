@@ -800,7 +800,7 @@ export const notesRouter = createRouter({
         ROLES_ENCAISSEMENT, "Consultation de note");
       if (note.sejourId && !(ROLES_RECEPTION as readonly string[]).includes(role)) {
         await journaliser(ctx.session.utilisateurId, role, "ACCES_REFUSE", "Note de chambre : réception/gérance seules",
-          { terrasseId: null });
+          { terrasseId: undefined });
         erreur("Note de chambre : réception ou gérance uniquement.");
       }
       const [client] = await db().select().from(s.clients).where(eq(s.clients.id, note.clientId)).limit(1);
@@ -833,7 +833,7 @@ export const notesRouter = createRouter({
       });
       await journaliser(ctx.session.utilisateurId, role, "ENCAISSEMENT_NOTE",
         `Note ${note.id} : ${input.montantCdf} FC / ${input.montantUsd} ¢ (${input.mode})${r.reglee ? " — SOLDÉE" : ""}`,
-        { terrasseId: null });
+        { terrasseId: undefined });
       return r;
     }),
 

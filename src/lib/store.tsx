@@ -639,7 +639,7 @@ export function archiverTable(tableId: string) {
 // ---------- Équipe et invitations ----------
 
 export function creerInvitation(terrasseId: string, role: RoleEtablissement, nomPrevu: string) {
-  return exec(api.gbs.creerInvitation.mutate({ terrasseId, role, nomPrevu })).then((r) => r.code)
+  return exec(api.gbs.creerInvitation.mutate({ terrasseId, role: role as any, nomPrevu })).then((r) => r.code)
 }
 
 export function revoquerInvitation(invitationId: string) {
