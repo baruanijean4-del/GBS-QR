@@ -19,6 +19,7 @@ const ScanCodeBarres = lazy(() =>
 import { dateHeure, fmtCDF, fmtUSD, ilYA, uid } from '@/lib/format'
 import { LogoGBS } from './Home'
 import { OngletMaNote } from './MaNote'
+import { OngletBillardClient } from './Billard'
 import {
   FournisseurPortee, annulerMaCommande, contexteTable, ecriturePermise, noterServeuse,
   ouvrirSessionClient, passerCommande, serveuseDeTable, useDB, useDBPret, utilisateurDe,
@@ -143,8 +144,8 @@ function VueClientInterne({ token, client, setClient }: {
 
   const { table, terrasse } = contexte
   const ecritureOk = ecriturePermise(db, terrasse.id)
-  const estBillard = false // Le billard est géré par le staff
-  const onglet = ongletChoisi ?? 'menu'
+  const estBillard = table.kind === 'BILLARD'
+  const onglet = ongletChoisi ?? (estBillard ? 'billard' : 'menu')
 
   // ---------- Étape 1 : prénom (une seule fois) ----------
   const demarrer = async () => {
@@ -338,7 +339,7 @@ function VueClientInterne({ token, client, setClient }: {
           </div>
         </div>
         <div className="flex px-4 pb-2">
-          {(['menu', 'suivi', 'note'] as const).map((o) => (
+          {(estBillard ? ['billard', 'menu', 'suivi', 'note'] as const : ['menu', 'suivi', 'note'] as const).map((o) => (
             <button
               key={o}
               onClick={() => setOnglet(o)}
@@ -372,7 +373,9 @@ function VueClientInterne({ token, client, setClient }: {
         </div>
       )}
 
-      {onglet === 'note' ? (
+      {onglet === 'billard' ? (
+        <BlocBoundary><OngletBillardClient token={token} sessionId={client.sessionId} /></BlocBoundary>
+      ) : onglet === 'note' ? (
         <BlocBoundary><OngletMaNote sessionId={client.sessionId} /></BlocBoundary>
       ) : onglet === 'menu' ? (
         <div className="px-4 pt-4">
