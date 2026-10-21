@@ -28,11 +28,7 @@ services:
         sync: false
       - key: SESSION_SECRET  # openssl rand -base64 48 (32+ caractères)
         sync: false
-      - key: PIN_ENC_KEY     # openssl rand -hex 32 (64 hex EXACTEMENT,
-        sync: false          #  DISTINCTE de SESSION_SECRET)
-      - key: SENTRY_DSN      # optionnel — laisser vide si non utilisé
-        sync: false
-      # --- Non sensibles ---
+            # --- Non sensibles ---
       - key: SESSION_GLISSANTE
         value: "1"
       # NE JAMAIS définir ANNUAIRE_DEMO ici : sa présence en
