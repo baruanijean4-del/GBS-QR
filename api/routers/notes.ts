@@ -233,37 +233,42 @@ export async function ouvrirNoteSejourDb(params: {
     .where(eq(s.notes.sejourId, params.sejourId)).limit(1);
   if (existante) return existante.id;
 
-  // Si le client a déjà une note ouverte (ex: terrasse), on l'utilise
+  const [terrasse] = await db().select().from(s.terrasses).where(eq(s.terrasses.id, params.terrasseId)).limit(1);
+  if (!terrasse) return null;
+
+  // On cherche une note ouverte pour ce client (via clientSessionId)
+  let noteExistante = null;
   if (params.clientSessionId) {
+    // On cherche d'abord si le client a une note ouverte (créée par une commande terrasse)
     const [sess] = await db().select().from(s.clientsSession)
       .where(eq(s.clientsSession.id, params.clientSessionId)).limit(1);
     if (sess) {
-      const [noteExistante] = await db().select().from(s.notes)
+      const [note] = await db().select().from(s.notes)
         .where(and(eq(s.notes.clientId, sess.id), eq(s.notes.statut, "OUVERTE"))).limit(1);
-      if (noteExistante) {
-        // On attache le séjour à la note existante
-        await db().update(s.notes)
-          .set({ sejourId: params.sejourId })
-          .where(eq(s.notes.id, noteExistante.id));
-        // On ajoute la ligne CHAMBRE à cette note
-        const montantChambre = params.mode === 'HEURE' 
-          ? (params.prixHeureCdf ?? 0) 
-          : (params.prixNuitCdf ?? 0);
-        
-        await db().insert(s.noteLignes).values({
-          id: uid("nln"), noteId: noteExistante.id, terrasseId: params.terrasseId, espace: "HOTEL", type: "CHAMBRE",
-          refId: params.sejourId, libelle: `Chambre ${params.mode === 'HEURE' ? '(heure)' : '(nuit)'}`, quantite: 1,
-          montantCdf: montantChambre, montantUsd: 0, tauxUsdCdf: null,
-          statut: "CONFIRMEE", creeParId: params.creeParId, creeLe: maintenant(),
-        });
-        return noteExistante.id;
-      }
+      if (note) noteExistante = note;
     }
   }
 
+  // Si on a trouvé une note existante, on y ajoute la chambre
+  if (noteExistante) {
+    await db().update(s.notes)
+      .set({ sejourId: params.sejourId })
+      .where(eq(s.notes.id, noteExistante.id));
+    
+    const montantChambre = params.mode === 'HEURE' 
+      ? (params.prixHeureCdf ?? 0) 
+      : (params.prixNuitCdf ?? 0);
+    
+    await db().insert(s.noteLignes).values({
+      id: uid("nln"), noteId: noteExistante.id, terrasseId: params.terrasseId, espace: "HOTEL", type: "CHAMBRE",
+      refId: params.sejourId, libelle: `Chambre ${params.mode === 'HEURE' ? '(heure)' : '(nuit)'}`, quantite: 1,
+      montantCdf: montantChambre, montantUsd: 0, tauxUsdCdf: null,
+      statut: "CONFIRMEE", creeParId: params.creeParId, creeLe: maintenant(),
+    });
+    return noteExistante.id;
+  }
+
   // Sinon, on crée une nouvelle note (comportement actuel)
-  const [terrasse] = await db().select().from(s.terrasses).where(eq(s.terrasses.id, params.terrasseId)).limit(1);
-  if (!terrasse) return null;
   const clientId = uid("clt");
   await db().insert(s.clients).values({
     id: clientId, organisationId: terrasse.organisationId,
@@ -275,10 +280,15 @@ export async function ouvrirNoteSejourDb(params: {
     sejourId: params.sejourId, statut: "OUVERTE", ouverteLe: maintenant(),
     tauxUsdCdf: terrasse.tauxUsdCdf,
   });
+  
+  const montantChambre = params.mode === 'HEURE' 
+    ? (params.prixHeureCdf ?? 0) 
+    : (params.prixNuitCdf ?? 0);
+    
   await db().insert(s.noteLignes).values({
     id: uid("nln"), noteId, terrasseId: params.terrasseId, espace: "HOTEL", type: "CHAMBRE",
-    refId: params.sejourId, libelle: "Chambre (séjour en cours)", quantite: 1,
-    montantCdf: 0, montantUsd: 0, tauxUsdCdf: terrasse.tauxUsdCdf,
+    refId: params.sejourId, libelle: `Chambre ${params.mode === 'HEURE' ? '(heure)' : '(nuit)'}`, quantite: 1,
+    montantCdf: montantChambre, montantUsd: 0, tauxUsdCdf: terrasse.tauxUsdCdf,
     statut: "CONFIRMEE", creeParId: params.creeParId, creeLe: maintenant(),
   });
   return noteId;
