@@ -520,7 +520,13 @@ export function QRGerant({ terrasseId }: { terrasseId: string }) {
   const [assignation, setAssignation] = useState<string | null>(null)
   const [qrsImpression, setQrsImpression] = useState<Record<string, string>>({})
   const terrasse = terrasseDe(db, terrasseId)!
+  // Fusionner les tables et les chambres pour l'affichage des QR
+  const chambres = (db as any).chambres?.filter((c: any) => c.terrasseId === terrasseId) ?? []
   const tables = db.tables.filter((t) => t.terrasseId === terrasseId && t.actif)
+  const toutesLesZones = [
+    ...tables.map((t) => ({ id: t.id, numero: t.numero, tokenQr: t.tokenQr, kind: t.kind, estChambre: false })),
+    ...chambres.map((c: any) => ({ id: c.id, numero: c.numero, tokenQr: c.tokenQr, kind: 'CHAMBRE', estChambre: true })),
+  ]
   const serveuses = db.affectations
     .filter((a) => a.terrasseId === terrasseId && a.role === 'SERVEUSE' && a.actif)
     .map((a) => utilisateurDe(db, a.utilisateurId)!)
@@ -531,7 +537,7 @@ export function QRGerant({ terrasseId }: { terrasseId: string }) {
     let annule = false
     const generer = async () => {
       const sortie: Record<string, string> = {}
-      for (const table of tables) {
+      for (const table of toutesLesZones) {
         sortie[table.id] = await QRCode.toDataURL(`${urlBase}#/t/${table.tokenQr}`, { width: 220, margin: 1 })
       }
       if (!annule) setQrsImpression(sortie)
@@ -541,21 +547,21 @@ export function QRGerant({ terrasseId }: { terrasseId: string }) {
       annule = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tables.map((table) => table.id + table.tokenQr).join(',')])
+  }, [toutesLesZones.map((table) => table.id + table.tokenQr).join(',')])
 
   const tableEnCours = tables.find((t) => t.id === assignation)
 
   return (
     <div className="flex flex-col gap-3 px-4 pt-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-sable/70">{t('gerant.tables_actives', { n: tables.length })}</p>
+        <p className="text-sm text-sable/70">{t('gerant.tables_actives', { n: toutesLesZones.length })}</p>
         <GrosBouton petit ton="secondaire" onClick={() => window.print()}>
           <Printer className="h-4 w-4" /> {t('gerant.imprimer')}
         </GrosBouton>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {tables.map((table) => {
+        {toutesLesZones.map((table) => {
           const serveuse = utilisateurDe(db, serveuseDeTable(db, table.id))
           return (
             <Carte key={table.id} classe="flex flex-col items-center gap-2 text-center">
