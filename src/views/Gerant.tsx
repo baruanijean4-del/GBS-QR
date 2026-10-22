@@ -567,7 +567,14 @@ export function QRGerant({ terrasseId }: { terrasseId: string }) {
             <Carte key={table.id} classe="flex flex-col items-center gap-2 text-center">
               <p className="font-mono text-xl font-black text-white">{t('serveuse.table_mot')} {table.numero}</p>
               <div className="rounded-xl bg-white p-1.5">
+              <div className="relative rounded-xl bg-white p-1.5">
                 <QR valeur={`${urlBase}#/t/${table.tokenQr}`} taille={110} />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="rounded-lg bg-white p-1">
+                    <img src="/icons/icon.svg" alt="GBS" className="h-6 w-6" />
+                  </div>
+                </div>
+              </div>
               </div>
               <p className="text-xs text-sable/60">
                 {serveuse ? serveuse.nom : t('gerant.non_assignee')}
