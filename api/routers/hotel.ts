@@ -82,7 +82,7 @@ export const hotelRouter = createRouter({
       type: z.enum(["SIMPLE", "DOUBLE", "SUITE"]).default("SIMPLE"),
       prixNuitCdf: z.number().int().positive().max(100_000_000),
       prixHeureCdf: z.number().int().positive().max(100_000_000).nullable().optional(),
-      photoUrl: z.string().url().max(500).nullable().optional(),
+      photoUrl: z.string().max(500).nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const acteurId = ctx.session.utilisateurId;
@@ -313,7 +313,7 @@ export const hotelRouter = createRouter({
   modifierChambre: protegee
     .input(z.object({
       chambreId: z.string(),
-      photoUrl: z.string().url().max(500).nullable().optional(),
+      photoUrl: z.string().max(500).nullable().optional(),
       prixNuitCdf: z.number().int().positive().max(100_000_000).optional(),
       prixHeureCdf: z.number().int().positive().max(100_000_000).nullable().optional(),
       type: z.enum(["SIMPLE", "DOUBLE", "SUITE"]).optional(),
