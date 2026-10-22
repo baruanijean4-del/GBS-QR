@@ -219,7 +219,7 @@
   "billard.personnes_devant": "{n} ahead of you",
   "billard.position": "Position n°{n}",
   "billard.prendre_ticket": "Take a ticket — {prix}",
-  "billard.prendre_ticket_d": "The ticket costs {prix}. Pay cash to the waitress: you will join the queue once validated.",
+  "billard.prendre_ticket_d": "The ticket costs {{prix}}. It will be added to your bill. You can order other items and pay everything at the end.",
   "billard.prendre_ticket_titre": "Pool ticket",
   "billard.prenom_ph": "Player's first name",
   "billard.prix_token": "Ticket price (FC)",

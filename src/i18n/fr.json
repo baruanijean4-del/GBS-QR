@@ -219,7 +219,7 @@
   "billard.personnes_devant": "{n} devant vous",
   "billard.position": "Position n°{n}",
   "billard.prendre_ticket": "Prendre un ticket — {prix}",
-  "billard.prendre_ticket_d": "Le ticket coûte {prix}. Payez cash à la serveuse : vous entrerez dans la file dès validation.",
+  "billard.prendre_ticket_d": "Le ticket coûte {{prix}}. Il sera ajouté à votre note. Vous pouvez commander d'autres articles et payer le tout à la fin.",
   "billard.prendre_ticket_titre": "Ticket de billard",
   "billard.prenom_ph": "Prénom du joueur",
   "billard.prix_token": "Prix du ticket (FC)",

@@ -219,7 +219,7 @@
   "billard.personnes_devant": "{n} mbele yako",
   "billard.position": "Nafasi n°{n}",
   "billard.prendre_ticket": "Chukua tiketi — {prix}",
-  "billard.prendre_ticket_d": "Tiketi ni {prix}. Lipa cash kwa mhudumu: utaingia kwenye foleni mara itakapothibitishwa.",
+  "billard.prendre_ticket_d": "Tikiti inagharimu {{prix}}. Itaongezwa kwenye bili yako. Unaweza kuagiza vitu vingine na kulipa yote mwishoni.",
   "billard.prendre_ticket_titre": "Tiketi ya biliadi",
   "billard.prenom_ph": "Jina la kwanza la mchezaji",
   "billard.prix_token": "Bei ya tiketi (FC)",
