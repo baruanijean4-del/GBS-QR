@@ -262,4 +262,20 @@ export const hotelRouter = createRouter({
       return { ok: true, sejourId, chambre: { id: chambre.id, numero: chambre.numero } };
     }),
 
+
+  /** Vue PUBLIQUE des chambres libres (client, sans authentification). */
+  voirChambresPubliques: publicQuery
+    .input(z.object({ terrasseId: z.string() }))
+    .query(async ({ input }) => {
+      const chambres = await db().select({
+        id: s.chambres.id,
+        numero: s.chambres.numero,
+        type: s.chambres.type,
+        prixNuitCdf: s.chambres.prixNuitCdf,
+        prixHeureCdf: s.chambres.prixHeureCdf,
+      }).from(s.chambres)
+        .where(and(eq(s.chambres.terrasseId, input.terrasseId), eq(s.chambres.statut, 'LIBRE')));
+      return chambres;
+    }),
+
 });

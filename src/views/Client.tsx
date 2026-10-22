@@ -20,6 +20,7 @@ import { dateHeure, fmtCDF, fmtUSD, ilYA, uid } from '@/lib/format'
 import { LogoGBS } from './Home'
 import { OngletMaNote } from './MaNote'
 import { OngletBillardClient } from './Billard'
+import { OngletChambres } from './Chambres'
 import {
   FournisseurPortee, annulerMaCommande, contexteTable, ecriturePermise, noterServeuse,
   ouvrirSessionClient, passerCommande, serveuseDeTable, useDB, useDBPret, utilisateurDe,
@@ -131,7 +132,12 @@ function VueClientInterne({ token, client, setClient }: {
   
   const ongletsDisponibles: { id: string; label: string }[] = []
   if (estBillard) ongletsDisponibles.push({ id: 'billard', label: t('billard.onglet') })
-  if (estHotel) ongletsDisponibles.push({ id: 'chambre', label: t('hotel.onglet_chambre') || 'Ma chambre' })
+  if (estHotel) {
+    ongletsDisponibles.push({ id: 'chambre', label: 'Ma chambre' })
+    if (terrasse.type !== 'GUEST_HOUSE') {
+      ongletsDisponibles.push({ id: 'chambres', label: 'Chambres' })
+    }
+  }
   if (!estHotel || estRestaurant || !estBillard) {
     ongletsDisponibles.push({ id: 'menu', label: t('client.la_carte') })
   }
@@ -322,6 +328,8 @@ function VueClientInterne({ token, client, setClient }: {
 
       {onglet === 'billard' ? (
         <BlocBoundary><OngletBillardClient token={token} sessionId={client.sessionId} /></BlocBoundary>
+      ) : onglet === 'chambres' ? (
+        <BlocBoundary><OngletChambres token={token} clientSessionId={client.sessionId} terrasseId={terrasse.id} /></BlocBoundary>
       ) : onglet === 'chambre' ? (
         <div className="px-4 pt-4">
           <Carte>
