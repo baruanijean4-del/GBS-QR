@@ -126,8 +126,9 @@ function VueClientInterne({ token, client, setClient }: {
   
   // --- LOGIQUE MULTI-MÉTIERS ---
   const definition = defFusionnee(terrasse.type, terrasse.typesSecondaires ?? [])
-  const estBillard = table.kind === 'BILLARD' || definition.modules.includes('BILLARD_FILE')
+  const estBillard = table.kind === 'BILLARD'
   const estHotel = definition.modules.includes('CHAMBRES')
+  const estChambre = estHotel && !estBillard && !/^Table|^Billard/i.test(table.numero.toString())
   const estRestaurant = definition.modules.includes('CUISINE_BAR')
   
   const ongletsDisponibles: { id: string; label: string }[] = []
@@ -144,7 +145,7 @@ function VueClientInterne({ token, client, setClient }: {
   ongletsDisponibles.push({ id: 'suivi', label: t('client.mes_commandes') })
   ongletsDisponibles.push({ id: 'note', label: t('note.onglet') })
 
-  const ongletDefaut = estBillard ? 'billard' : (estHotel ? 'chambre' : 'menu')
+  const ongletDefaut = estBillard ? 'billard' : (estChambre ? 'chambre' : (estHotel ? 'chambres' : 'menu'))
   const onglet = ongletChoisi ?? ongletDefaut
 
   const demarrer = async () => {
