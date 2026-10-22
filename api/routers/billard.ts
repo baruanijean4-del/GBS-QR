@@ -335,7 +335,7 @@ export const billardRouter = createRouter({
 
       // --- AJOUT DIRECT À LA NOTE (sans validation serveuse) ---
       if (sess.id) {
-        const noteId = await ajouterLignesNoteDb({
+        await ajouterLignesNoteDb({
           clientSessionId: sess.id,
           terrasseId: table.terrasseId,
           espace: 'BILLARD',
@@ -351,16 +351,8 @@ export const billardRouter = createRouter({
             tauxUsdCdf: cree.tauxUsdCdf,
           }],
         });
-        if (noteId) {
-          await encaisserNoteDb({
-            noteId,
-            acteurId: 'client',
-            montantCdf: cree.prixCdf,
-            montantUsd: 0,
-            mode: refMobile ? 'MOBILE_MONEY' : 'CASH',
-            referenceMobile: refMobile,
-          });
-        }
+                // Le token reste en ATTENTE_PAIEMENT : le client paie à la fin.
+        // L'encaissement sera fait quand la serveuse validera le token.
       }
       // --- FIN AJOUT DIRECT ---
 
