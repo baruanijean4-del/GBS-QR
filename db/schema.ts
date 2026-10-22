@@ -93,7 +93,7 @@ export const tablesQr = pgTable(
     /** Nature de la zone : ZONE (table classique) | BILLARD (table de
      *  billard Vincaire — annexe §1). COMPTOIR reste géré par
      *  tokenQrBoutique sur terrasses. */
-    kind: varchar("kind", { length: 12 }).notNull().default("ZONE"),
+    kind: varchar("kind", { length: 12 }).notNull().default("ZONE"), // ZONE | BILLARD | CHAMBRE,
     actif: boolean("actif").notNull().default(true),
     creeLe: iso("cree_le").notNull(),
     archiveLe: isoNul("archive_le"),

@@ -94,6 +94,18 @@ export const hotelRouter = createRouter({
         prixNuitCdf: input.prixNuitCdf, prixHeureCdf: input.prixHeureCdf ?? null,
         creeLe: maintenant(),
       }).returning();
+
+      // Création du QR code pour la chambre (kind = CHAMBRE)
+      const tokenQr = uid('qrc');
+      await db().insert(s.tablesQr).values({
+        id: uid('tab'),
+        terrasseId: input.terrasseId,
+        numero: parseInt(input.numero.trim()) || 1,
+        kind: 'CHAMBRE',
+        tokenQr,
+        actif: true,
+        creeLe: maintenant(),
+      });
       await journaliser(acteurId, role, "CHAMBRE_CREEE",
         `Chambre ${creee.numero} (${creee.type}) — ${creee.prixNuitCdf} FC/nuit${creee.prixHeureCdf ? `, ${creee.prixHeureCdf} FC/h` : ""}`,
         { terrasseId: input.terrasseId });
