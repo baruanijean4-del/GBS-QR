@@ -19,10 +19,10 @@ import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import * as s from "@db/schema";
 import { montantSejourCdf, type ModeSejour } from "@contracts/hotel";
-import { createRouter, protegee } from "../middleware";
+import { createRouter, protegee, publicQuery } from "../middleware";
 import { finaliserLigneSejourDb, ouvrirNoteSejourDb } from "./notes";
 import {
-  db, erreur, exigerGerantOuProprio, journaliser, rolesSurDb, tauxCourantDb,
+  db, erreur, exigerGerantOuProprio, journaliser, resoudreTableParToken, rolesSurDb, tauxCourantDb,
 } from "../gbsRouter";
 import { maintenant, uid } from "../gbsUtils";
 
@@ -229,4 +229,37 @@ export const hotelRouter = createRouter({
         { terrasseId: chambre.terrasseId, avant: "A_NETTOYER", apres: "LIBRE" });
       return { ok: true as const };
     }),
+
+  /** Le client prend une chambre depuis son téléphone (QR terrasse). */
+  prendreChambreDepuisTerrasse: publicQuery
+    .input(z.object({ token: z.string(), clientSessionId: z.string(), chambreId: z.string(), mode: z.enum(['NUIT', 'HEURE']) }))
+    .mutation(async ({ input }) => {
+      const table = await resoudreTableParToken(input.token);
+      if (!table) erreur('QR code invalide.');
+      const [chambre] = await db().select().from(s.chambres).where(eq(s.chambres.id, input.chambreId)).limit(1);
+      if (!chambre || chambre.statut !== 'LIBRE') erreur('Cette chambre n est plus disponible.');
+      const [sess] = await db().select().from(s.clientsSession).where(eq(s.clientsSession.id, input.clientSessionId)).limit(1);
+      if (!sess) erreur('Session client invalide.');
+      const sejourId = uid('sej');
+      const maintenantIso = maintenant();
+      await db().transaction(async (tx) => {
+        await tx.update(s.chambres).set({ statut: 'OCCUPEE' }).where(eq(s.chambres.id, chambre.id));
+        await tx.insert(s.sejours).values({
+          id: sejourId, chambreId: chambre.id, terrasseId: table.terrasseId,
+          clientNom: sess.prenom, pieceIdentite: null, mode: input.mode,
+          arriveeLe: maintenantIso, departLe: null, montantTotalCdf: null,
+          statut: 'EN_COURS', tauxUsdCdf: null, creePar: 'client', creeLe: maintenantIso,
+        });
+      });
+      // Ouvrir la note de séjour (fusionnée avec la note terrasse si elle existe)
+      await ouvrirNoteSejourDb({
+        terrasseId: table.terrasseId,
+        sejourId,
+        clientNom: sess.prenom,
+        creeParId: 'client',
+        clientSessionId: input.clientSessionId,
+      });
+      return { ok: true, sejourId, chambre: { id: chambre.id, numero: chambre.numero } };
+    }),
+
 });

@@ -224,10 +224,37 @@ export async function synchroniserLignesCommandeDb(
  *  check-out. Idempotent par sejour_id. */
 export async function ouvrirNoteSejourDb(params: {
   terrasseId: string; sejourId: string; clientNom: string; creeParId: string;
+  clientSessionId?: string; // ← NOUVEAU : pour fusionner avec la note existante
 }): Promise<string | null> {
   const [existante] = await db().select({ id: s.notes.id }).from(s.notes)
     .where(eq(s.notes.sejourId, params.sejourId)).limit(1);
   if (existante) return existante.id;
+
+  // Si le client a déjà une note ouverte (ex: terrasse), on l'utilise
+  if (params.clientSessionId) {
+    const [sess] = await db().select().from(s.clientsSession)
+      .where(eq(s.clientsSession.id, params.clientSessionId)).limit(1);
+    if (sess) {
+      const [noteExistante] = await db().select().from(s.notes)
+        .where(and(eq(s.notes.clientId, sess.id), eq(s.notes.statut, "OUVERTE"))).limit(1);
+      if (noteExistante) {
+        // On attache le séjour à la note existante
+        await db().update(s.notes)
+          .set({ sejourId: params.sejourId })
+          .where(eq(s.notes.id, noteExistante.id));
+        // On ajoute la ligne CHAMBRE à cette note
+        await db().insert(s.noteLignes).values({
+          id: uid("nln"), noteId: noteExistante.id, terrasseId: params.terrasseId, espace: "HOTEL", type: "CHAMBRE",
+          refId: params.sejourId, libelle: "Chambre (séjour en cours)", quantite: 1,
+          montantCdf: 0, montantUsd: 0, tauxUsdCdf: null,
+          statut: "CONFIRMEE", creeParId: params.creeParId, creeLe: maintenant(),
+        });
+        return noteExistante.id;
+      }
+    }
+  }
+
+  // Sinon, on crée une nouvelle note (comportement actuel)
   const [terrasse] = await db().select().from(s.terrasses).where(eq(s.terrasses.id, params.terrasseId)).limit(1);
   if (!terrasse) return null;
   const clientId = uid("clt");
