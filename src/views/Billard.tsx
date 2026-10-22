@@ -225,23 +225,11 @@ export function OngletBillardClient({ token, sessionId }: { token: string; sessi
 
       {/* Confirmations */}
       <Feuille ouvert={confirmeAchat} surFermer={() => setConfirmeAchat(false)} titre={t('billard.prendre_ticket_titre')}>
-        <p className="mb-4 text-sm text-sable/80">{t('billard.prendre_ticket_d', { prix: fmtCDF(f.prixTokenCdf) })}</p>
-        {/* Airtel Money flux manuel : le client paie au numéro de
-            l'établissement puis déclare la référence SMS ; vide = cash */}
-        <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-sable/50" htmlFor="ref-airtel">
-          {t('billard.airtel_ref')}
-        </label>
-        <input
-          id="ref-airtel"
-          className={`${classeSaisie} mb-1 font-mono`}
-          value={refMobile}
-          onChange={(e) => setRefMobile(e.target.value.slice(0, 30))}
-          placeholder={t('billard.airtel_ref_ph')}
-          autoCapitalize="characters"
-        />
-        <p className="mb-4 text-xs text-sable/50">{t('billard.airtel_ref_d')}</p>
+        <p className="mb-4 text-sm text-sable/80">
+          Le ticket coûte {fmtCDF(f.prixTokenCdf)}. Il sera ajouté à votre note. Vous pouvez commander d'autres articles et payer le tout à la fin.
+        </p>
         <GrosBouton onClick={() => void acheter()}>
-          <Banknote className="h-5 w-5" /> {t('billard.confirmer_ticket', { prix: fmtCDF(f.prixTokenCdf) })}
+          <Plus className="h-5 w-5" /> Ajouter à ma note ({fmtCDF(f.prixTokenCdf)})
         </GrosBouton>
       </Feuille>
       <Confirmation
