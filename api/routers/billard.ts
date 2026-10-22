@@ -332,6 +332,38 @@ export const billardRouter = createRouter({
         serie: 0, creeLe: maintenant(), referenceMobile: refMobile,
         tauxUsdCdf: tauxVente,
       }).returning();
+
+      // --- AJOUT DIRECT À LA NOTE (sans validation serveuse) ---
+      if (sess.id) {
+        const noteId = await ajouterLignesNoteDb({
+          clientSessionId: sess.id,
+          terrasseId: table.terrasseId,
+          espace: 'BILLARD',
+          type: 'TOKEN_BILLARD',
+          creeParId: null,
+          lignes: [{
+            refId: cree.id,
+            libelle: 'Token billard n°' + cree.numero,
+            quantite: 1,
+            montantCdf: cree.prixCdf,
+            montantUsd: 0,
+            statut: 'EN_ATTENTE',
+            tauxUsdCdf: cree.tauxUsdCdf,
+          }],
+        });
+        if (noteId) {
+          await encaisserNoteDb({
+            noteId,
+            acteurId: 'client',
+            montantCdf: cree.prixCdf,
+            montantUsd: 0,
+            mode: refMobile ? 'MOBILE_MONEY' : 'CASH',
+            referenceMobile: refMobile,
+          });
+        }
+      }
+      // --- FIN AJOUT DIRECT ---
+
       await journaliser(null, null,
         refMobile ? "BILLARD_PAIEMENT_MOBILE_DECLARE" : "BILLARD_TOKEN_CREE",
         `Token #${cree.numero} (${sess.prenom}) — ${config.prixTokenCdf} FC` +
