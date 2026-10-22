@@ -11,7 +11,7 @@ export const WA_NUMERO = '243815486276'
 export const WA_AFFICHE = '+243 81 548 62 76'
 
 /** Adresse e-mail de contact. */
-export const COURRIEL = 'henrkihiutila@gbs.com'
+export const COURRIEL = 'henrkihiutila@gbsqr.space'
 
 /** Lien WhatsApp pré-rempli (message traduit par l'appelant). */
 export function lienWhatsApp(message: string): string {
