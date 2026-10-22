@@ -132,16 +132,23 @@ function VueClientInterne({ token, client, setClient }: {
   const estRestaurant = definition.modules.includes('CUISINE_BAR')
   
   const ongletsDisponibles: { id: string; label: string }[] = []
-  if (estBillard && !estChambre) ongletsDisponibles.push({ id: 'billard', label: t('billard.onglet') })
-  if (estHotel) {
+  
+  // 1. Onglet principal selon le type de zone
+  if (estBillard) {
+    ongletsDisponibles.push({ id: 'billard', label: t('billard.onglet') })
+  } else if (estChambre) {
     ongletsDisponibles.push({ id: 'chambre', label: 'Ma chambre' })
-    if (terrasse.type !== 'GUEST_HOUSE') {
-      ongletsDisponibles.push({ id: 'chambres', label: 'Chambres' })
-    }
+  } else if (estHotel) {
+    // Terrasse d'un hôtel : on peut voir et prendre les chambres
+    ongletsDisponibles.push({ id: 'chambres', label: 'Chambres' })
   }
-  if (!estHotel || estRestaurant || !estBillard) {
+  
+  // 2. Onglet "La carte" (menu)
+  if (!estChambre || estRestaurant || estBillard) {
     ongletsDisponibles.push({ id: 'menu', label: t('client.la_carte') })
   }
+  
+  // 3. Onglets communs
   ongletsDisponibles.push({ id: 'suivi', label: t('client.mes_commandes') })
   ongletsDisponibles.push({ id: 'note', label: t('note.onglet') })
 
