@@ -147,7 +147,7 @@ export type Module =
 /** Nature de QR qu'un type peut imprimer. ZONE = table/chambre/poste ;
  *  COMPTOIR = QR mural des commerces à zone unique ; BILLARD = file
  *  Vincaire (QR posé sur le billard). */
-export type QrAutorise = "ZONE" | "COMPTOIR" | "BILLARD";
+export type QrAutorise = "ZONE" | "COMPTOIR" | "BILLARD" | "CHAMBRE";
 
 /** Vocabulaire par métier : comment on nomme une zone de vente. */
 export interface Libelle {
@@ -439,7 +439,7 @@ export interface TableT {
   archiveLe: string | null;
   /** Nature de la zone scannée : ZONE = table/comptoir classique,
    *  BILLARD = table de billard (file Vincaire). Défaut ZONE. */
-  kind: "ZONE" | "BILLARD";
+  kind: "ZONE" | "BILLARD" | "CHAMBRE";
 }
 
 /**

@@ -198,7 +198,7 @@ async function prixMensuelTerrasseDb(terrasseId: string): Promise<number> {
  *  (annexe §1 — QR de la file Vincaire). */
 export async function ajouterTableDb(
   acteurId: string, terrasseId: string, numeroSouhaite?: number,
-  kind: "ZONE" | "BILLARD" = "ZONE",
+  kind: "ZONE" | "BILLARD" | "CHAMBRE" = "ZONE",
 ) {
   await refuserSiBoutique(terrasseId);
   const nbAvant = await nbTablesActivesDb(terrasseId);

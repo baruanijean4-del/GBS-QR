@@ -154,11 +154,10 @@ function TableauGerant({ terrasseId, alertesNonLues }: { terrasseId: string; ale
           <p className="text-xs font-bold uppercase tracking-widest text-sable/50">{t('gerant.commandes_en_cours')}</p>
           {enCours.map((c) => {
             const table = db.tables.find((t) => t.id === c.tableId)
-            const client = db.clientsSession.find((x) => x.id === c.clientSessionId)
             return (
               <div key={c.id} className="flex items-center justify-between rounded-2xl border border-white/8 bg-surface px-4 py-3">
                 <div>
-                  <p className="font-semibold text-white">{t('serveuse.table_mot')} {table?.numero} · {client?.prenom}</p>
+              <p className="font-mono text-xl font-black text-white">{t('serveuse.table_mot')} {table?.numero ?? "?"}</p>
                   <p className="text-xs text-sable/50">{c.statut === 'EN_ATTENTE' ? t('gerant.a_confirmer') : t('gerant.confirmee')} · {ilYA(c.creeLe)}</p>
                 </div>
                 <Money cdf={c.totalCdf} usd={c.totalUsdCentimes} />
