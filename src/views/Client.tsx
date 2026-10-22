@@ -128,22 +128,22 @@ function VueClientInterne({ token, client, setClient }: {
   const definition = defFusionnee(terrasse.type, terrasse.typesSecondaires ?? [])
   const estBillard = table.kind === 'BILLARD'
   const estHotel = definition.modules.includes('CHAMBRES')
-  const estChambre = estHotel && !estBillard && !/^Table|^Billard/i.test(table.numero.toString())
+  const estChambre = table.kind === 'CHAMBRE'
+  const estTerrasse = estHotel && !estChambre && !estBillard
   const estRestaurant = definition.modules.includes('CUISINE_BAR')
   
   const ongletsDisponibles: { id: string; label: string }[] = []
   
-  // 1. Onglet principal selon le type de zone
+  // 1. Onglet principal (Billard, Chambre ou Chambres)
   if (estBillard) {
     ongletsDisponibles.push({ id: 'billard', label: t('billard.onglet') })
   } else if (estChambre) {
     ongletsDisponibles.push({ id: 'chambre', label: 'Ma chambre' })
-  } else if (estHotel) {
-    // Terrasse d'un hôtel : on peut voir et prendre les chambres
+  } else if (estTerrasse) {
     ongletsDisponibles.push({ id: 'chambres', label: 'Chambres' })
   }
   
-  // 2. Onglet "La carte" (menu)
+  // 2. Menu
   if (!estChambre || estRestaurant || estBillard) {
     ongletsDisponibles.push({ id: 'menu', label: t('client.la_carte') })
   }
@@ -341,7 +341,7 @@ function VueClientInterne({ token, client, setClient }: {
       ) : onglet === 'chambre' ? (
         <div className="px-4 pt-4">
           <Carte>
-            <p className="text-lg font-bold text-white">Chambre {table.numero}</p>
+            <p className="text-lg font-bold text-white">{estChambre ? 'Chambre ' : 'Table '}{table.numero}</p>
             <p className="mt-1 text-sm text-sable/70">{terrasse.nom}</p>
             <div className="mt-4 flex flex-col gap-2">
               <GrosBouton onClick={() => setOnglet('menu')}>Commander le petit-déjeuner</GrosBouton>
