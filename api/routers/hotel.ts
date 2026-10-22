@@ -20,7 +20,7 @@ import { z } from "zod";
 import * as s from "@db/schema";
 import { montantSejourCdf, type ModeSejour } from "@contracts/hotel";
 import { createRouter, protegee, publicQuery } from "../middleware";
-import { finaliserLigneSejourDb, ouvrirNoteSejourDb } from "./notes";
+import { ajouterLignesNoteDb, finaliserLigneSejourDb, ouvrirNoteSejourDb } from "./notes";
 import {
   db, erreur, exigerGerantOuProprio, journaliser, resoudreTableParToken, rolesSurDb, tauxCourantDb,
 } from "../gbsRouter";
@@ -264,12 +264,26 @@ export const hotelRouter = createRouter({
         });
       });
       // Ouvrir la note de séjour (fusionnée avec la note terrasse si elle existe)
-      await ouvrirNoteSejourDb({
-        terrasseId: table.terrasseId,
-        sejourId,
-        clientNom: sess.prenom,
-        creeParId: 'client',
+      // Ajouter la chambre à la note du client (comme pour le billard)
+      const montantChambre = input.mode === 'HEURE'
+        ? (chambre.prixHeureCdf ?? 0)
+        : (chambre.prixNuitCdf ?? 0);
+      
+      await ajouterLignesNoteDb({
         clientSessionId: input.clientSessionId,
+        terrasseId: table.terrasseId,
+        espace: 'HOTEL',
+        type: 'CHAMBRE',
+        creeParId: 'client',
+        lignes: [{
+          refId: sejourId,
+          libelle: `Chambre ${input.mode === 'HEURE' ? '(heure)' : '(nuit)'}`,
+          quantite: 1,
+          montantCdf: montantChambre,
+          montantUsd: 0,
+          tauxUsdCdf: null,
+          statut: 'CONFIRMEE',
+        }],
       });
       return { ok: true, sejourId, chambre: { id: chambre.id, numero: chambre.numero } };
     }),
