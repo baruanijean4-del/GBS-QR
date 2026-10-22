@@ -92,3 +92,41 @@ export async function enregistrerPhotoProduit(
     };
   }
 }
+
+/**
+ * Traite et enregistre la photo d'une chambre sous
+ * uploads/chambres/{terrasseId}/{chambreId}/ puis retourne les URLs publiques.
+ * Le dossier est purgé avant écriture (comme pour les produits).
+ */
+export async function enregistrerPhotoChambre(
+  terrasseId: string,
+  chambreId: string,
+  tampon: Buffer,
+): Promise<PhotosProduit> {
+  const dossier = path.resolve("uploads", "chambres", terrasseId, chambreId);
+  fs.rmSync(dossier, { recursive: true, force: true });
+  fs.mkdirSync(dossier, { recursive: true });
+  const base = `/uploads/chambres/${terrasseId}/${chambreId}`;
+
+  try {
+    const { photo, vignette } = await traiterImage(tampon);
+    fs.writeFileSync(path.join(dossier, "photo.jpg"), photo);
+    fs.writeFileSync(path.join(dossier, "vignette.jpg"), vignette);
+    return {
+      photoUrl: `${base}/photo.jpg`,
+      photoThumbnailUrl: `${base}/vignette.jpg`,
+      traitee: true,
+      poidsKo: Math.round(photo.length / 1024),
+    };
+  } catch (e) {
+    console.error("[storage] Traitement image chambre échoué, repli sur l'original :", e);
+    const ext = extensionDe(tampon);
+    fs.writeFileSync(path.join(dossier, `photo.${ext}`), tampon);
+    return {
+      photoUrl: `${base}/photo.${ext}`,
+      photoThumbnailUrl: `${base}/photo.${ext}`,
+      traitee: false,
+      poidsKo: Math.round(tampon.length / 1024),
+    };
+  }
+}

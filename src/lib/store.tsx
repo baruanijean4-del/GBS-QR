@@ -815,6 +815,15 @@ export function modifierChambreHotel(input: {
   return exec(api.hotel.modifierChambre.mutate(input))
 }
 
+/** Direction : upload la photo d'une chambre (base64) */
+export function uploadPhotoChambre(input: {
+  chambreId: string;
+  fichierBase64: string;
+  nomFichier?: string;
+}) {
+  return exec(api.hotel.uploadPhotoChambre.mutate(input))
+}
+
 /** Réception : check-in (nom + pièce d'identité, nuitée ou heure) */
 export function checkInChambre(input: {
   chambreId: string; clientNom: string; pieceIdentite: string; mode: 'NUIT' | 'HEURE';
