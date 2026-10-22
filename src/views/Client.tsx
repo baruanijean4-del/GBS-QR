@@ -132,7 +132,7 @@ function VueClientInterne({ token, client, setClient }: {
   const estRestaurant = definition.modules.includes('CUISINE_BAR')
   
   const ongletsDisponibles: { id: string; label: string }[] = []
-  if (estBillard) ongletsDisponibles.push({ id: 'billard', label: t('billard.onglet') })
+  if (estBillard && !estChambre) ongletsDisponibles.push({ id: 'billard', label: t('billard.onglet') })
   if (estHotel) {
     ongletsDisponibles.push({ id: 'chambre', label: 'Ma chambre' })
     if (terrasse.type !== 'GUEST_HOUSE') {
@@ -279,7 +279,7 @@ function VueClientInterne({ token, client, setClient }: {
             <div className="min-w-0 flex-1">
               <p className="truncate text-lg font-bold text-white">{terrasse.nom}</p>
               <p className="truncate text-xs text-sable/70">
-                {table.kind === 'BILLARD' ? t('billard.zone_numero', { numero: table.numero }) : t('client.table', { numero: table.numero })}
+                {table.kind === 'BILLARD' ? t('billard.zone_numero', { numero: table.numero }) : (table.kind === 'CHAMBRE' ? 'Chambre ' + table.numero : t('client.table', { numero: table.numero }))}
                 {serveuse ? ` · ${t('client.servie_par', { nom: serveuse.nom.split(' ')[0]! })}` : ''}
               </p>
             </div>
