@@ -198,7 +198,8 @@ export const chambres = pgTable("chambres", {
   statut: varchar("statut", { length: 12 }).notNull().default("LIBRE"), // LIBRE | OCCUPEE | A_NETTOYER
   prixNuitCdf: integer("prix_nuit_cdf").notNull(),
   prixHeureCdf: integer("prix_heure_cdf"), // NULL = pas de location à l'heure
-  creeLe: iso("cree_le").notNull(),
+    photoUrl: varchar("photo_url", { length: 500 }),
+    creeLe: iso("cree_le").notNull(),
 }, (t) => [
   unique("uq_chambres_terrasse_numero").on(t.terrasseId, t.numero),
   index("idx_chambres_terrasse_statut").on(t.terrasseId, t.statut),

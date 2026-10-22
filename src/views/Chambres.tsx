@@ -60,6 +60,9 @@ export function OngletChambres({ token, clientSessionId, terrasseId }: { token: 
       <div className="flex flex-col gap-3">
         {libres.map((c) => (
           <Carte key={c.id}>
+            {c.photoUrl && (
+              <img src={c.photoUrl} alt={`Chambre ${c.numero}`} className="mb-3 w-full rounded-xl object-cover" style={{ height: 160 }} />
+            )}
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-bold text-white">Chambre {c.numero}</p>

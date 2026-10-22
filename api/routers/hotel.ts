@@ -299,9 +299,9 @@ export const hotelRouter = createRouter({
         type: s.chambres.type,
         prixNuitCdf: s.chambres.prixNuitCdf,
         prixHeureCdf: s.chambres.prixHeureCdf,
+        photoUrl: s.chambres.photoUrl,
       }).from(s.chambres)
         .where(and(eq(s.chambres.terrasseId, input.terrasseId), eq(s.chambres.statut, 'LIBRE')));
       return chambres;
     }),
-
 });
