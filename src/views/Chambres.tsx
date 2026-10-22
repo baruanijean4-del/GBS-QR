@@ -15,11 +15,13 @@ export function OngletChambres({ token, clientSessionId, terrasseId }: { token: 
 
   // On récupère les chambres libres depuis l'API
   const { data: chambres, isLoading } = trpc.hotel.voirChambresPubliques.useQuery({ terrasseId })
+  
+  // Le hook useMutation DOIT être appelé au début du composant (pas dans une fonction)
+  const mutation = trpc.hotel.prendreChambreDepuisTerrasse.useMutation()
 
   const prendre = async (chambreId: string) => {
     setEnCours(chambreId)
     try {
-            const mutation = trpc.hotel.prendreChambreDepuisTerrasse.useMutation()
       await mutation.mutateAsync({
         token,
         clientSessionId,
@@ -27,6 +29,8 @@ export function OngletChambres({ token, clientSessionId, terrasseId }: { token: 
         mode: 'NUIT',
       })
       toast.success('Chambre ajoutée à votre note !')
+      // On force le rechargement pour que la note se mette à jour
+      window.location.reload()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Erreur lors de la prise de chambre.')
     } finally {
