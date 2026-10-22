@@ -563,18 +563,21 @@ export function QRGerant({ terrasseId }: { terrasseId: string }) {
         {toutesLesZones.map((table) => {
           const serveuse = utilisateurDe(db, serveuseDeTable(db, table.id))
           return (
-            <Carte key={table.id} classe="flex flex-col items-center gap-2 text-center">
-              <p className="font-mono text-xl font-black text-white">{t('serveuse.table_mot')} {table.numero}</p>
-              <div className="rounded-xl bg-white p-1.5">
-              <div className="relative rounded-xl bg-white p-1.5">
-                <QR valeur={`${urlBase}#/t/${table.tokenQr}`} taille={110} />
+            <Carte key={table.id} classe="flex flex-col items-center gap-1 text-center p-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-ambre">{terrasse.nom}</p>
+              <div className="relative my-2 rounded-xl bg-white p-1.5">
+                <QR valeur={`${urlBase}#/t/${table.tokenQr}`} taille={130} />
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="rounded-lg bg-white p-1">
                     <img src="/icons/icon.svg" alt="GBS" className="h-6 w-6" />
                   </div>
                 </div>
               </div>
-              </div>
+              <p className="font-mono text-xl font-black text-white">
+                {table.kind === 'CHAMBRE' ? 'Chambre' : t('serveuse.table_mot')} {table.numero}
+              </p>
+              <p className="text-[10px] text-sable/70 leading-tight">{terrasse.adresse || 'Adresse non renseignée'}</p>
+              <p className="text-[9px] text-sable/40 italic mt-1">Scannez pour commander</p>
               <p className="text-xs text-sable/60">
                 {serveuse ? serveuse.nom : t('gerant.non_assignee')}
               </p>

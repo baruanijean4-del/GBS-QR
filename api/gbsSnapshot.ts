@@ -14,7 +14,7 @@ import { ajouterJours, joursRestants, maintenant, uid } from "./gbsUtils";
 function mapperTable(t: typeof s.tablesQr.$inferSelect): TableT {
   return {
     id: t.id, terrasseId: t.terrasseId, numero: t.numero, tokenQr: t.tokenQr,
-    kind: (t.kind === "BILLARD" ? "BILLARD" : (t.kind === "CHAMBRE" ? "CHAMBRE" : "ZONE")) as "ZONE" | "BILLARD" | "CHAMBRE",
+    kind: t.kind as "ZONE" | "BILLARD" | "CHAMBRE",
     actif: t.actif, creeLe: t.creeLe, archiveLe: t.archiveLe ?? null,
   };
 }
