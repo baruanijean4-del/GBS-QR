@@ -307,4 +307,35 @@ export const hotelRouter = createRouter({
         .where(and(eq(s.chambres.terrasseId, input.terrasseId), eq(s.chambres.statut, 'LIBRE')));
       return chambres;
     }),
+
+  /** Direction : modifie une chambre (photo, prix, type). */
+  modifierChambre: protegee
+    .input(z.object({
+      chambreId: z.string(),
+      photoUrl: z.string().url().max(500).nullable().optional(),
+      prixNuitCdf: z.number().int().positive().max(100_000_000).optional(),
+      prixHeureCdf: z.number().int().positive().max(100_000_000).nullable().optional(),
+      type: z.enum(["SIMPLE", "DOUBLE", "SUITE"]).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const acteurId = ctx.session.utilisateurId;
+      const [chambre] = await db().select().from(s.chambres)
+        .where(eq(s.chambres.id, input.chambreId)).limit(1);
+      if (!chambre) erreur("Chambre introuvable.");
+      const role = await exigerGerantOuProprio(acteurId, chambre.terrasseId);
+      
+      const maj: Record<string, unknown> = {};
+      if (input.photoUrl !== undefined) maj.photoUrl = input.photoUrl;
+      if (input.prixNuitCdf !== undefined) maj.prixNuitCdf = input.prixNuitCdf;
+      if (input.prixHeureCdf !== undefined) maj.prixHeureCdf = input.prixHeureCdf;
+      if (input.type !== undefined) maj.type = input.type;
+      
+      if (Object.keys(maj).length === 0) return { ok: true };
+      
+      await db().update(s.chambres).set(maj).where(eq(s.chambres.id, input.chambreId));
+      await journaliser(acteurId, role, "CHAMBRE_MODIFIEE",
+        `Chambre ${chambre.numero} modifiée`,
+        { terrasseId: chambre.terrasseId, avant: JSON.stringify(chambre), apres: JSON.stringify(maj) });
+      return { ok: true };
+    }),
 });

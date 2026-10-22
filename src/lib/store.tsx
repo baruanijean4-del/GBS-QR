@@ -804,6 +804,17 @@ export function creerChambreHotel(input: {
   return exec(api.hotel.creerChambre.mutate(input))
 }
 
+/** Direction : modifie une chambre (photo, prix, type) */
+export function modifierChambreHotel(input: {
+  chambreId: string;
+  photoUrl?: string | null;
+  prixNuitCdf?: number;
+  prixHeureCdf?: number | null;
+  type?: 'SIMPLE' | 'DOUBLE' | 'SUITE';
+}) {
+  return exec(api.hotel.modifierChambre.mutate(input))
+}
+
 /** Réception : check-in (nom + pièce d'identité, nuitée ou heure) */
 export function checkInChambre(input: {
   chambreId: string; clientNom: string; pieceIdentite: string; mode: 'NUIT' | 'HEURE';

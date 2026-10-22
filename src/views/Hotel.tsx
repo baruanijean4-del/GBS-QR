@@ -27,7 +27,7 @@ import { montantSejourCdf, type ModeSejour, type StatutChambre } from '@contract
 import { fmtCDF, ilYA } from '@/lib/format'
 import {
   FournisseurPortee, checkInChambre, checkOutSejour, creerChambreHotel,
-  marquerChambreNettoyee, rolesSur, useDB, useSession,
+  marquerChambreNettoyee, modifierChambreHotel, rolesSur, useDB, useSession,
 } from '@/lib/store'
 import { BoutonDeconnexion, CoquilleRole, PorteRole } from '@/components/Coquille'
 import { BoutonSupportWhatsApp } from '@/components/gbs'
@@ -72,6 +72,7 @@ export function PanneauHotel({ terrasseId, mode }: { terrasseId: string; mode: M
   )
   const [selection, setSelection] = useState<ChambreVue | null>(null)
   const [creation, setCreation] = useState(false)
+  const [modification, setModification] = useState<ChambreVue | null>(null)
 
   if (chambres.isPending) return <Chargement label={t('hotel.chargement')} />
   if (chambres.error || !chambres.data) {
@@ -161,6 +162,14 @@ export function PanneauHotel({ terrasseId, mode }: { terrasseId: string; mode: M
           terrasseId={terrasseId}
           surFermer={() => setCreation(false)}
           surFait={() => { setCreation(false); void chambres.refetch() }}
+        />
+      )}
+
+      {modification && (
+        <FeuilleModification
+          chambre={modification}
+          surFermer={() => setModification(null)}
+          surFait={() => { setModification(null); void chambres.refetch() }}
         />
       )}
     </div>
@@ -424,5 +433,51 @@ function EspaceHotel({ moi, terrasse }: { moi: Utilisateur; terrasse: Terrasse }
     >
       <PanneauHotel terrasseId={terrasse.id} mode={mode} />
     </CoquilleRole>
+  )
+}
+
+// ---------- Feuille de modification (direction) ----------
+
+function FeuilleModification({ chambre, surFermer, surFait }: {
+  chambre: ChambreVue
+  surFermer: () => void
+  surFait: () => void
+}) {
+  const t = useT()
+  const [photoUrl, setPhotoUrl] = useState(chambre.photoUrl ?? '')
+  const [charge, setCharge] = useState(false)
+
+  return (
+    <Feuille ouvert surFermer={surFermer} titre={`Modifier la chambre ${chambre.numero}`}>
+      <div className="flex flex-col gap-3">
+        <label className="text-xs font-bold uppercase tracking-widest text-sable/50">URL de la photo</label>
+        <input
+          className={classeSaisie}
+          value={photoUrl}
+          onChange={(e) => setPhotoUrl(e.target.value)}
+          placeholder="https://example.com/photo.jpg"
+        />
+        {photoUrl && (
+          <img src={photoUrl} alt={`Chambre ${chambre.numero}`} className="h-32 w-full rounded-xl object-cover" />
+        )}
+        <GrosBouton
+          charge={charge}
+          onClick={() => {
+            if (charge) return
+            setCharge(true)
+            void (async () => {
+              try {
+                await modifierChambreHotel({ chambreId: chambre.id, photoUrl: photoUrl.trim() || null })
+                toast.success('Photo mise à jour !')
+                surFait()
+              } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
+              finally { setCharge(false) }
+            })()
+          }}
+        >
+          Enregistrer
+        </GrosBouton>
+      </div>
+    </Feuille>
   )
 }
