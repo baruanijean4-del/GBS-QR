@@ -492,7 +492,9 @@ function FeuilleModification({ chambre, surFermer, surFait }: {
                 if (photoUrl.startsWith('data:')) {
                   // C'est une image base64 → on l'upload
                   const base64 = photoUrl.split(',')[1]
-                  await uploadPhotoChambre({ chambreId: chambre.id, fichierBase64: base64 })
+                  const result = await uploadPhotoChambre({ chambreId: chambre.id, fichierBase64: base64 })
+                  // On enregistre l'URL renvoyée par le serveur
+                  await modifierChambreHotel({ chambreId: chambre.id, photoUrl: result.photoUrl })
                 } else {
                   // C'est une URL → on la passe directement
                   await modifierChambreHotel({ chambreId: chambre.id, photoUrl: photoUrl.trim() || null })
