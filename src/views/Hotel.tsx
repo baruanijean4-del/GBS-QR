@@ -43,6 +43,7 @@ type ChambreVue = {
   statut: StatutChambre
   prixNuitCdf: number
   prixHeureCdf: number | null
+  photoUrl: string | null
   sejour: {
     id: string
     clientNom: string
@@ -115,18 +116,23 @@ export function PanneauHotel({ terrasseId, mode }: { terrasseId: string; mode: M
               <button
                 key={c.id}
                 onClick={() => setSelection(c)}
-                className={`flex flex-col items-start gap-1 rounded-2xl border px-3 py-3 text-left active:scale-[0.98] ${style.cadre}`}
+                className={`flex flex-col items-start gap-1 overflow-hidden rounded-2xl border text-left active:scale-[0.98] ${style.cadre}`}
               >
-                <div className="flex w-full items-center justify-between">
+                {c.photoUrl && (
+                  <img src={c.photoUrl} alt={`Chambre ${c.numero}`} className="h-24 w-full object-cover" />
+                )}
+                <div className="flex w-full items-center justify-between px-3 pt-3">
                   <span className="font-mono text-lg font-bold text-white">{c.numero}</span>
                   <Pill ton={style.pill}>{t(`hotel.statut_${c.statut.toLowerCase()}`)}</Pill>
                 </div>
-                <span className="text-xs text-sable/60">{t(`hotel.type_${c.type.toLowerCase()}`)} · {fmtCDF(c.prixNuitCdf)}</span>
-                {c.sejour && (
-                  <span className="truncate text-xs font-semibold text-white">
-                    {c.sejour.clientNom} · {ilYA(c.sejour.arriveeLe)}
-                  </span>
-                )}
+                <div className="px-3 pb-3">
+                  <span className="text-xs text-sable/60">{t(`hotel.type_${c.type.toLowerCase()}`)} · {fmtCDF(c.prixNuitCdf)}</span>
+                  {c.sejour && (
+                    <span className="block truncate text-xs font-semibold text-white">
+                      {c.sejour.clientNom} · {ilYA(c.sejour.arriveeLe)}
+                    </span>
+                  )}
+                </div>
               </button>
             )
           })}
@@ -314,6 +320,7 @@ function FeuilleCreation({ terrasseId, surFermer, surFait }: {
   const [type, setType] = useState<'SIMPLE' | 'DOUBLE' | 'SUITE'>('SIMPLE')
   const [prixNuit, setPrixNuit] = useState('')
   const [prixHeure, setPrixHeure] = useState('')
+  const [photoUrl, setPhotoUrl] = useState('')
   const [charge, setCharge] = useState(false)
 
   const prixN = parseInt(prixNuit, 10)
@@ -342,6 +349,13 @@ function FeuilleCreation({ terrasseId, surFermer, surFait }: {
         <SaisieNombre valeur={prixNuit} onChange={setPrixNuit} placeholder="40000" />
         <label className="text-xs font-bold uppercase tracking-widest text-sable/50">{t('hotel.prix_heure')}</label>
         <SaisieNombre valeur={prixHeure} onChange={setPrixHeure} placeholder={t('hotel.prix_heure_ph')} />
+        <label className="text-xs font-bold uppercase tracking-widest text-sable/50">URL de la photo</label>
+        <input
+          className={classeSaisie}
+          value={photoUrl}
+          onChange={(e) => setPhotoUrl(e.target.value)}
+          placeholder="https://example.com/photo.jpg"
+        />
         <GrosBouton
           charge={charge}
           desactive={!valide}
@@ -350,7 +364,7 @@ function FeuilleCreation({ terrasseId, surFermer, surFait }: {
             setCharge(true)
             void (async () => {
               try {
-                await creerChambreHotel({ terrasseId, numero: numero.trim(), type, prixNuitCdf: prixN, prixHeureCdf: prixH })
+                await creerChambreHotel({ terrasseId, numero: numero.trim(), type, prixNuitCdf: prixN, prixHeureCdf: prixH, photoUrl: photoUrl.trim() || null })
                 toast.success(t('hotel.chambre_creee', { n: numero.trim() }))
                 surFait()
               } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }

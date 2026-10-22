@@ -65,6 +65,7 @@ export const hotelRouter = createRouter({
           return {
             id: c.id, numero: c.numero, type: c.type, statut: c.statut,
             prixNuitCdf: c.prixNuitCdf, prixHeureCdf: c.prixHeureCdf,
+            photoUrl: c.photoUrl,
             sejour: sj && !voitIdentite ? { ...sj, pieceIdentite: null } : sj,
           };
         })
@@ -80,6 +81,7 @@ export const hotelRouter = createRouter({
       type: z.enum(["SIMPLE", "DOUBLE", "SUITE"]).default("SIMPLE"),
       prixNuitCdf: z.number().int().positive().max(100_000_000),
       prixHeureCdf: z.number().int().positive().max(100_000_000).nullable().optional(),
+      photoUrl: z.string().url().max(500).nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const acteurId = ctx.session.utilisateurId;
@@ -92,6 +94,7 @@ export const hotelRouter = createRouter({
         id: uid("cha"), terrasseId: input.terrasseId, numero: input.numero.trim(),
         type: input.type, statut: "LIBRE",
         prixNuitCdf: input.prixNuitCdf, prixHeureCdf: input.prixHeureCdf ?? null,
+        photoUrl: input.photoUrl ?? null,
         creeLe: maintenant(),
       }).returning();
 

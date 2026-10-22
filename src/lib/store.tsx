@@ -799,6 +799,7 @@ export function exporterComptabiliteJour(terrasseId: string, jour: string) {
 export function creerChambreHotel(input: {
   terrasseId: string; numero: string; type: 'SIMPLE' | 'DOUBLE' | 'SUITE';
   prixNuitCdf: number; prixHeureCdf: number | null;
+  photoUrl?: string | null;
 }) {
   return exec(api.hotel.creerChambre.mutate(input))
 }
