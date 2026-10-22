@@ -224,7 +224,10 @@ export async function synchroniserLignesCommandeDb(
  *  check-out. Idempotent par sejour_id. */
 export async function ouvrirNoteSejourDb(params: {
   terrasseId: string; sejourId: string; clientNom: string; creeParId: string;
-  clientSessionId?: string; // ← NOUVEAU : pour fusionner avec la note existante
+  clientSessionId?: string;
+  prixNuitCdf?: number;
+  prixHeureCdf?: number;
+  mode?: 'NUIT' | 'HEURE';
 }): Promise<string | null> {
   const [existante] = await db().select({ id: s.notes.id }).from(s.notes)
     .where(eq(s.notes.sejourId, params.sejourId)).limit(1);
@@ -243,10 +246,14 @@ export async function ouvrirNoteSejourDb(params: {
           .set({ sejourId: params.sejourId })
           .where(eq(s.notes.id, noteExistante.id));
         // On ajoute la ligne CHAMBRE à cette note
+        const montantChambre = params.mode === 'HEURE' 
+          ? (params.prixHeureCdf ?? 0) 
+          : (params.prixNuitCdf ?? 0);
+        
         await db().insert(s.noteLignes).values({
           id: uid("nln"), noteId: noteExistante.id, terrasseId: params.terrasseId, espace: "HOTEL", type: "CHAMBRE",
-          refId: params.sejourId, libelle: "Chambre (séjour en cours)", quantite: 1,
-          montantCdf: 0, montantUsd: 0, tauxUsdCdf: null,
+          refId: params.sejourId, libelle: `Chambre ${params.mode === 'HEURE' ? '(heure)' : '(nuit)'}`, quantite: 1,
+          montantCdf: montantChambre, montantUsd: 0, tauxUsdCdf: null,
           statut: "CONFIRMEE", creeParId: params.creeParId, creeLe: maintenant(),
         });
         return noteExistante.id;
