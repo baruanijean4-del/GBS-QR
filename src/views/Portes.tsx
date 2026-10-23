@@ -269,7 +269,9 @@ export function Invitation() {
                   r.role === 'GERANT' ? '/g'
                     : r.role === 'RECEPTIONNISTE' || r.role === 'GOUVERNANTE' ? '/h'
                       : r.role === 'CHEF' || r.role === 'MAGASINIER' ? '/cuisine'
-                        : '/s',
+                        : r.role === 'CAISSIER' ? '/c'
+                          : r.role === 'BILLARDIER' ? '/b'
+                            : '/s'
                 )
               } catch (e) {
                 toast.error(e instanceof Error ? e.message : t('commun.erreur'))
