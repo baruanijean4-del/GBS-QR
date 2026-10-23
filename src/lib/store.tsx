@@ -599,7 +599,12 @@ export function declarerCaisse(
   motifEcart?: string,
 ) {
   return exec(api.remises.declarer.mutate({
-    terrasseId, attenduCdf, attenduUsdCentimes, recuCdf, recuUsdCentimes, motifEcart,
+    organisationId: terrasseId,
+    attenduCdf,
+    attenduUsd: attenduUsdCentimes,
+    recuCdf,
+    recuUsd: recuUsdCentimes,
+    motifEcart,
   }))
 }
 
