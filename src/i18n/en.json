@@ -1078,5 +1078,11 @@
     "caisse.recu_usd":  "Amount received in USD",
     "caisse.aucune_declaration":  "No declaration yet.",
     "caisse.en_attente_validation":  "Pending manager approval",
-    "caisse.recu_cdf":  "Amount received in CDF"
+    "caisse.recu_cdf":  "Amount received in CDF",
+    "note.contester":  "Contest",
+    "note.remises_caisse_titre":  "Till declarations (front desk)",
+    "note.valider_remise_caisse":  "Validate till declaration",
+    "note.aucune_remise_caisse_d":  "Receptionist declarations will appear here.",
+    "note.remise_contestee":  "Declaration contested — receptionist will be notified",
+    "note.aucune_remise_caisse":  "No pending declaration"
 }

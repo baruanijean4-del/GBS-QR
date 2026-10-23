@@ -1078,5 +1078,11 @@
     "caisse.recu_usd":  "Kiasi kilichopokelewa kwa USD",
     "caisse.aucune_declaration":  "Hakuna tamko bado.",
     "caisse.en_attente_validation":  "Inasubiri idhini ya meneja",
-    "caisse.recu_cdf":  "Kiasi kilichopokelewa kwa CDF"
+    "caisse.recu_cdf":  "Kiasi kilichopokelewa kwa CDF",
+    "note.contester":  "Pinga",
+    "note.remises_caisse_titre":  "Matamko ya kasha (mapokezi)",
+    "note.valider_remise_caisse":  "Thibitisha tamko la kasha",
+    "note.aucune_remise_caisse_d":  "Matamko ya mpokeaji yataonekana hapa.",
+    "note.remise_contestee":  "Tamko limepingwa — mpokeaji ataarifiwa",
+    "note.aucune_remise_caisse":  "Hakuna tamko linalosubiri"
 }

@@ -613,6 +613,15 @@ export function listerRemisesEnAttente(terrasseId: string) {
   return exec(api.remises.listerEnAttente.query({ terrasseId }))
 }
 
+/** Valide une déclaration de caisse (gérant/propriétaire). */
+export function validerCaisse(remiseId: string, recuCdf: number, recuUsd: number, motifEcart?: string) {
+  return exec(api.remises.valider.mutate({ remiseId, recuCdf, recuUsd, motifEcart }))
+}
+
+/** Conteste une déclaration de caisse (gérant/propriétaire). */
+export function contesterCaisse(remiseId: string, motifContest: string) {
+  return exec(api.remises.contester.mutate({ remiseId, motifContest }))
+}
 /** Liste les déclarations de caisse du réceptionniste connecté (vue personnel). */
 export function listerMesDeclarations(limite = 30) {
   return exec(api.remises.listerMesDeclarations.query({ limite }))

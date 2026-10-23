@@ -1078,5 +1078,11 @@
     "caisse.recu_usd":  "Montant reçu en USD",
     "caisse.aucune_declaration":  "Aucune déclaration pour le moment.",
     "caisse.en_attente_validation":  "En attente de validation par le gérant",
-    "caisse.recu_cdf":  "Montant reçu en CDF"
+    "caisse.recu_cdf":  "Montant reçu en CDF",
+    "note.contester":  "Contester",
+    "note.remises_caisse_titre":  "Déclarations de caisse (réception)",
+    "note.valider_remise_caisse":  "Valider la déclaration de caisse",
+    "note.aucune_remise_caisse_d":  "Les déclarations du réceptionniste apparaîtront ici.",
+    "note.remise_contestee":  "Déclaration contestée — le réceptionniste sera notifié",
+    "note.aucune_remise_caisse":  "Aucune déclaration en attente"
 }
