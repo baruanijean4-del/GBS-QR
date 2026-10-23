@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // GBS — Routeur tRPC « remises » : déclaration de caisse
 // Règle : « Là où l'argent disparaît, GBS le voit. »
 // Table existante : remises_caisse (migration 0018)
@@ -10,12 +10,23 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import * as s from "@db/schema";
 import { createRouter, protegee } from "../middleware";
-import { alerter, db, erreur, journaliser } from "../gbsRouter";
-import { exigerRole } from "../lib/permissions";
+import { alerter, db, erreur, journaliser, rolesSurDb } from "../gbsRouter";
 import { maintenant, uid } from "../gbsUtils";
 
 const SEUIL_CDF_DEFAUT = 5000;
 const SEUIL_USD_DEFAUT = 200;
+
+/** Exige un rôle parmi la liste, sinon refus journalisé.
+ *  Helper local — même logique que hotel.ts (non exporté globalement). */
+async function exigerRole(acteurId: string, terrasseId: string, attendus: readonly string[], action: string) {
+  const roles = await rolesSurDb(acteurId, terrasseId);
+  if (roles.some((r) => attendus.includes(r))) {
+    return roles.includes("PROPRIETAIRE") ? "PROPRIETAIRE" : roles[0];
+  }
+  await journaliser(acteurId, roles[0] ?? null, "PERMISSION_REFUSEE",
+    `${action} tentée sans rôle habilité`, { terrasseId });
+  erreur(`Action réservée : ${action.toLowerCase()}.`);
+}
 
 export const remisesRouter = createRouter({
   // ── 1. Le réceptionniste DÉCLARE sa caisse ────────────────
