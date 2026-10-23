@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // GBS — Hôtel : interface RÉCEPTION et MÉNAGE (boucle 9).
 // Grille des chambres à code couleur strict :
 //   VERT = LIBRE (cliquer → check-in), ROUGE = OCCUPÉE (cliquer →
@@ -258,6 +258,11 @@ function FeuilleChambre({ chambre, peutRecevoir, peutNettoyer, surFermer, surFai
         <div className="flex flex-col gap-3">
           <Carte>
             <p className="font-semibold text-white">{chambre.sejour?.clientNom}</p>
+            {chambre.sejour?.pieceIdentite && (
+              <p className="text-xs text-sable/60">
+                {t('hotel.piece_identite')} : {chambre.sejour.pieceIdentite}
+              </p>
+            )}
             <p className="text-xs text-sable/60">
               {chambre.sejour?.mode === 'NUIT' ? t('hotel.mode_nuit') : t('hotel.mode_heure')}
               {' · '}{t('hotel.arrivee')} {chambre.sejour ? ilYA(chambre.sejour.arriveeLe) : ''}
