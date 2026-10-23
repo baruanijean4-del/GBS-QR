@@ -27,7 +27,7 @@ import { montantSejourCdf, type ModeSejour, type StatutChambre } from '@contract
 import { fmtCDF, ilYA } from '@/lib/format'
 import {
   FournisseurPortee, checkInChambre, checkOutSejour, creerChambreHotel,
-  marquerChambreNettoyee, modifierChambreHotel, uploadPhotoChambre, rolesSur, useDB, useSession,
+  marquerChambreNettoyee, modifierChambreHotel, rolesSur, useDB, useSession,
 } from '@/lib/store'
 import { BoutonDeconnexion, CoquilleRole, PorteRole } from '@/components/Coquille'
 import { BoutonSupportWhatsApp } from '@/components/gbs'
@@ -463,24 +463,15 @@ function FeuilleModification({ chambre, surFermer, surFait }: {
   return (
     <Feuille ouvert surFermer={surFermer} titre={`Modifier la chambre ${chambre.numero}`}>
       <div className="flex flex-col gap-3">
-        <label className="text-xs font-bold uppercase tracking-widest text-sable/50">Photo de la chambre</label>
+        <label className="text-xs font-bold uppercase tracking-widest text-sable/50">URL de la photo</label>
         <input
-          type="file"
-          accept="image/*"
           className={classeSaisie}
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (!file) return
-            const reader = new FileReader()
-            reader.onload = () => {
-              const base64 = (reader.result as string).split(',')[1]
-              setPhotoUrl(base64)
-            }
-            reader.readAsDataURL(file)
-          }}
+          value={photoUrl}
+          onChange={(e) => setPhotoUrl(e.target.value)}
+          placeholder="https://example.com/photo.jpg"
         />
-        {photoUrl && (
-          <img src={photoUrl.startsWith('data:') ? photoUrl : `data:image/jpeg;base64,${photoUrl}`} alt={`Chambre ${chambre.numero}`} className="h-32 w-full rounded-xl object-cover" />
+        {photoUrl && !photoUrl.startsWith('data:') && (
+          <img src={photoUrl} alt={`Chambre ${chambre.numero}`} className="h-32 w-full rounded-xl object-cover" />
         )}
         <GrosBouton
           charge={charge}
@@ -489,16 +480,8 @@ function FeuilleModification({ chambre, surFermer, surFait }: {
             setCharge(true)
             void (async () => {
               try {
-                if (photoUrl.startsWith('data:')) {
-                  // C'est une image base64 → on l'upload
-                  const base64 = photoUrl.split(',')[1]
-                  const result = await uploadPhotoChambre({ chambreId: chambre.id, fichierBase64: base64 })
-                  // On enregistre l'URL renvoyée par le serveur
-                  await modifierChambreHotel({ chambreId: chambre.id, photoUrl: result.photoUrl })
-                } else {
-                  // C'est une URL → on la passe directement
-                  await modifierChambreHotel({ chambreId: chambre.id, photoUrl: photoUrl.trim() || null })
-                }
+                // On envoie simplement l'URL (ou null si vide)
+                await modifierChambreHotel({ chambreId: chambre.id, photoUrl: photoUrl.trim() || null })
                 toast.success('Photo mise à jour !')
                 surFait()
               } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
