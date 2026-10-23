@@ -1434,8 +1434,13 @@ function Equipe({ terrasseId }: { terrasseId: string }) {
       (terrasse?.type ?? 'TERRASSE'),
       terrasse?.typesSecondaires ?? [],
     )
-    return def.roles
-  }, [terrasse])
+    // On filtre BILLARDIER selon le nombre de billards de l'établissement
+    const nbBillards = db.tables.filter(
+      (ta) => ta.terrasseId === terrasseId && ta.actif && !ta.archiveLe && ta.kind === 'BILLARD'
+    ).length
+    const estGrandEtablissement = nbBillards >= 3
+    return def.roles.filter((r) => r !== 'BILLARDIER' || estGrandEtablissement)
+  }, [terrasse, db, terrasseId])
 
   return (
     <div className="flex flex-col gap-3 px-4 pt-4">
