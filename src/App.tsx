@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // GBS — Routeur principal (fragments #/... — tout part de « / »)
 // Chaque route est enfermée dans sa PageBoundary (Phase B.2) :
 // une page qui plante laisse les autres pages utilisables.
@@ -26,7 +26,6 @@ const VueGerant = lazy(() => import('@/views/Gerant').then((m) => ({ default: m.
 const VueProprio = lazy(() => import('@/views/Proprio').then((m) => ({ default: m.VueProprio })))
 const VueAdmin = lazy(() => import('@/views/Admin').then((m) => ({ default: m.VueAdmin })))
 const VueHotel = lazy(() => import('@/views/Hotel').then((m) => ({ default: m.VueHotel })))
-const VueCaisse = lazy(() => import('@/views/Caisse').then((m) => ({ default: m.VueCaisse })))
 const VueTraiteur = lazy(() => import('@/views/Traiteur').then((m) => ({ default: m.VueTraiteur })))
 
 export default function App() {
@@ -57,9 +56,6 @@ export default function App() {
         break
       case '/h':
         page = <VueHotel />
-        break
-      case '/c':
-        page = <VueCaisse />
         break
       case '/cuisine':
         page = <VueTraiteur />

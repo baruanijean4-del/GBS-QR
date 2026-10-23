@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // GBS — Routeur tRPC « notes » : note client unique (ANNEXE-2) et
 // « payer pour quelqu'un » (ANNEXE-3).
 //
@@ -51,12 +51,12 @@ type NoteRow = typeof s.notes.$inferSelect;
 /** Qui peut encaisser une note (ANNEXE-2 §5.1 : tout employé autorisé
  *  de l'organisation — liste explicite pour exclure CUISINE_BAR,
  *  GOUVERNANTE, BILLARDIER, VENDEUR, PHARMACIEN, PRESTATAIRE). */
-const ROLES_ENCAISSEMENT = ["PROPRIETAIRE", "GERANT", "SERVEUSE", "CAISSIER", "RECEPTIONNISTE"] as const;
+const ROLES_ENCAISSEMENT = ["PROPRIETAIRE", "GERANT", "SERVEUSE", "RECEPTIONNISTE"] as const;
 /** Note rattachée à un séjour : réception ou gérance SEULEMENT (§5.1). */
 const ROLES_RECEPTION = ["PROPRIETAIRE", "GERANT", "RECEPTIONNISTE"] as const;
 const ROLES_GERANCE = ["PROPRIETAIRE", "GERANT"] as const;
 /** Décision d'une prise en charge : serveuse de la zone ou gérant (§1.4). */
-const ROLES_DECISION_PEC = ["PROPRIETAIRE", "GERANT", "SERVEUSE", "CAISSIER"] as const;
+const ROLES_DECISION_PEC = ["PROPRIETAIRE", "GERANT", "SERVEUSE"] as const;
 
 // ---------------- Helpers rôles à l'échelle ORGANISATION ----------------
 

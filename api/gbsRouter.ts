@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // GBS — Routeur tRPC métier. Mêmes règles et messages que la
 // maquette, mais exécutés côté serveur sur la base partagée.
 // ============================================================
@@ -274,8 +274,8 @@ export async function refuserSiBoutique(terrasseId: string) {
 }
 
 const zRoleEtab = z.enum([
-  "GERANT", "SERVEUSE", "CAISSIER", "CUISINE_BAR", "BILLARDIER",
-  "RECEPTIONNISTE", "GOUVERNANTE", "PHARMACIEN", "VENDEUR", "PRESTATAIRE",
+  "GERANT", "SERVEUSE", "CUISINE_BAR", "BILLARDIER",
+  "RECEPTIONNISTE", "PHARMACIEN", "VENDEUR", "PRESTATAIRE",
 ]);
 const zMethode = z.enum(["M_PESA", "AIRTEL_MONEY", "ORANGE_MONEY"]);
 

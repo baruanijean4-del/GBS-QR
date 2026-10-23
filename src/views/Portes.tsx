@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // GBS — Portes d'entrée : création d'établissement, invitation,
 // connexion. Écrans secondaires chargés À LA DEMANDE (boucle 7,
 // budget JS) : l'accueil (premier contact, LCP) reste dans le
@@ -297,7 +297,7 @@ export function Connexion() {
   const personnes = annuaire.data ?? []
   const LIBELLES: Record<string, string> = {
     PROPRIETAIRE: t('conn.role_prop'), GERANT: t('conn.role_ger'), SERVEUSE: t('conn.role_serv'),
-    RECEPTIONNISTE: t('role.receptionniste'), GOUVERNANTE: t('role.gouvernante'),
+    RECEPTIONNISTE: t('role.receptionniste'), 
   }
 
   const entrer = async () => {

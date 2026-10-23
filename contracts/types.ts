@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // GBS / Nganda POS — Types partagés frontend ↔ backend
 // ------------------------------------------------------------
 // Conventions :
@@ -15,8 +15,8 @@ export * from "./errors";
  *  PROPRIETAIRE n'y figure pas : c'est le compte propriétaire,
  *  pas une affectation. */
 export type RoleEtablissement =
-  | "GERANT" | "SERVEUSE" | "CAISSIER" | "CUISINE_BAR" | "BILLARDIER"
-  | "RECEPTIONNISTE" | "GOUVERNANTE" | "PHARMACIEN" | "VENDEUR" | "PRESTATAIRE"
+  | "GERANT" | "SERVEUSE" | "CUISINE_BAR" | "BILLARDIER"
+  | "RECEPTIONNISTE" | "PHARMACIEN" | "VENDEUR" | "PRESTATAIRE"
   | "CHEF" | "MAGASINIER";
 
 /** Rôle actif global d'un utilisateur dans l'application :
@@ -60,11 +60,9 @@ export const PERMISSIONS_PAR_ROLE: Record<RoleEtablissement, readonly ActionSens
     "ANNULER_VENTE", "AJUSTER_STOCK", "VALIDER_TOKEN_BILLARD", "VOIR_CREDITS",
   ],
   SERVEUSE: ["REMISE", "VALIDER_TOKEN_BILLARD"],
-  CAISSIER: ["REMISE", "VALIDER_TOKEN_BILLARD"],
   CUISINE_BAR: [],
   BILLARDIER: ["REMISE", "VALIDER_TOKEN_BILLARD"],
   RECEPTIONNISTE: ["REMISE", "VOIR_CREDITS"],
-  GOUVERNANTE: [],
   PHARMACIEN: ["REMISE", "VALIDER_ORDONNANCE"],
   VENDEUR: ["REMISE"],
   PRESTATAIRE: ["REMISE"],
@@ -78,11 +76,9 @@ export const PERMISSIONS_PAR_ROLE: Record<RoleEtablissement, readonly ActionSens
 export const SEUIL_REMISE_PAR_ROLE: Record<RoleEtablissement, number | null> = {
   GERANT: null,
   SERVEUSE: 5,
-  CAISSIER: 5,
   CUISINE_BAR: 0,
   BILLARDIER: 5,
   RECEPTIONNISTE: 5,
-  GOUVERNANTE: 0,
   PHARMACIEN: 5,
   VENDEUR: 5,
   PRESTATAIRE: 0,
@@ -196,7 +192,7 @@ export const TYPES_ETABLISSEMENT: Record<TypeEtablissement, TypeEtablissementDef
     modules: ["MENU", "COMMANDES", "CUISINE_BAR", "STOCK", "CAISSE", "ALERTES", "BILLARD_FILE", "CATALOGUE"],
     zone: TABLE, zones: TABLES,
     qrAutorises: ["ZONE", "BILLARD"],
-    roles: ["GERANT", "SERVEUSE", "CAISSIER", "CUISINE_BAR", "BILLARDIER", "CHEF", "MAGASINIER"],
+    roles: ["GERANT", "SERVEUSE", "CUISINE_BAR", "BILLARDIER", "CHEF", "MAGASINIER"],
     widgets: ["ventes_jour", "caisse_jour", "stock_bas", "top_produits", "file_billard", "alertes"],
     alertes: [...ALERTES_COMMUNES, "PARTIE_SANS_TOKEN", "TOKEN_ANNULE_PAYE", "JOUEUR_ABSENT", "TABLE_SANS_PAIEMENT", "SERVI_NON_FACTURE", "RUPTURE_STOCK"],
     fraisInstallationUsd: 1000, zoneUnique: false, rechercheProduit: false,
@@ -216,7 +212,7 @@ export const TYPES_ETABLISSEMENT: Record<TypeEtablissement, TypeEtablissementDef
     modules: ["MENU", "COMMANDES", "CUISINE_BAR", "STOCK", "CAISSE", "ALERTES", "CATALOGUE"],
     zone: TABLE, zones: TABLES,
     qrAutorises: ["ZONE"],
-    roles: ["GERANT", "SERVEUSE", "CUISINE_BAR", "CAISSIER", "CHEF", "MAGASINIER"],
+    roles: ["GERANT", "SERVEUSE", "CUISINE_BAR", "CHEF", "MAGASINIER"],
     widgets: ["ventes_jour", "caisse_jour", "stock_bas", "top_produits", "tables_ouvertes", "alertes"],
     alertes: [...ALERTES_COMMUNES, "TABLE_SANS_PAIEMENT", "SERVI_NON_FACTURE", "RUPTURE_STOCK"],
     fraisInstallationUsd: 1000, zoneUnique: false, rechercheProduit: false,
@@ -226,7 +222,7 @@ export const TYPES_ETABLISSEMENT: Record<TypeEtablissement, TypeEtablissementDef
     modules: ["CATALOGUE", "COMMANDES", "STOCK", "CAISSE", "ALERTES", "CREDIT_CLIENT"],
     zone: COMPTOIR, zones: COMPTOIR,
     qrAutorises: ["COMPTOIR"],
-    roles: ["GERANT", "VENDEUR", "CAISSIER"],
+    roles: ["GERANT", "VENDEUR"],
     widgets: ["ventes_jour", "caisse_jour", "ruptures", "credits", "alertes"],
     alertes: [...ALERTES_COMMUNES, "RUPTURE_STOCK", "ECART_INVENTAIRE", "CREDIT_PLAFOND"],
     fraisInstallationUsd: 500, zoneUnique: true, rechercheProduit: true,
@@ -246,7 +242,7 @@ export const TYPES_ETABLISSEMENT: Record<TypeEtablissement, TypeEtablissementDef
     modules: ["CATALOGUE", "COMMANDES", "STOCK", "CAISSE", "ALERTES", "CREDIT_CLIENT"],
     zone: COMPTOIR, zones: COMPTOIR,
     qrAutorises: ["COMPTOIR"],
-    roles: ["GERANT", "VENDEUR", "CAISSIER"],
+    roles: ["GERANT", "VENDEUR"],
     widgets: ["ventes_jour", "caisse_jour", "ruptures", "credits", "devis_en_cours", "alertes"],
     alertes: [...ALERTES_COMMUNES, "RUPTURE_STOCK", "ECART_INVENTAIRE", "CREDIT_PLAFOND"],
     fraisInstallationUsd: 1000, zoneUnique: true, rechercheProduit: true,
@@ -277,7 +273,7 @@ export const TYPES_ETABLISSEMENT: Record<TypeEtablissement, TypeEtablissementDef
     zone: { fr: "billard", en: "pool table", pt: "bilhar", sw: "billiard" },
     zones: { fr: "billards", en: "pool tables", pt: "bilhares", sw: "billiards" },
     qrAutorises: ["BILLARD"],
-    roles: ["GERANT", "BILLARDIER", "SERVEUSE", "CAISSIER"],
+    roles: ["GERANT", "BILLARDIER", "SERVEUSE"],
     widgets: ["file_billard", "caisse_jour", "ventes_jour", "alertes"],
     alertes: [...ALERTES_COMMUNES, "PARTIE_SANS_TOKEN", "TOKEN_ANNULE_PAYE", "JOUEUR_ABSENT"],
     fraisInstallationUsd: 1000, zoneUnique: false, rechercheProduit: false,
