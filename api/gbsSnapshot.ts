@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // GBS — Chargement de l'image de données (filtrée par portée)
 // + cycle de vie des abonnements (équivalent du cron quotidien)
 // ============================================================
@@ -49,7 +49,7 @@ export async function chargerTout(): Promise<DB> {
     tableServeuse, clientsSession, commandes, sessionsService, depots, avis,
     invitations, demandesStock, alertes, mouvementsStock, auditLog, plansTarifs,
     abonnements, historiqueTranches, paiements, factures, metaLignes, catalogueProduits,
-    depenses,
+    depenses, encaissements, remisesCaisse,
   ] = await Promise.all([
     db.select().from(s.organisations),
     db.select().from(s.utilisateurs),
@@ -76,6 +76,8 @@ export async function chargerTout(): Promise<DB> {
     db.select().from(s.meta),
     db.select().from(s.catalogueProduits),
     db.select().from(s.depenses),
+    db.select().from(s.encaissements),
+    db.select().from(s.remisesCaisse),
   ]);
 
   return {
@@ -158,6 +160,16 @@ export async function chargerTout(): Promise<DB> {
       montantUsdCentimes: d.montantUsd, motif: d.motif, saisiPar: d.saisiPar,
       roleActif: (d.roleActif ?? null) as DB["depenses"][number]["roleActif"],
       creeLe: d.creeLe,
+    })),
+    encaissements: encaissements.map((e) => ({
+      id: e.id, terrasseId: e.organisationId, // mapping legacy DB→client
+      montantCdf: e.montantCdf, montantUsd: e.montantUsd,
+      mode: e.mode, statut: e.statut, creeLe: e.creeLe,
+    })),
+    remisesCaisse: remisesCaisse.map((r) => ({
+      id: r.id, terrasseId: r.organisationId, // mapping legacy DB→client
+      statut: r.statut, recuCdf: r.recuCdf, recuUsd: r.recuUsd,
+      creeLe: r.creeLe,
     })),
     paiements: paiements.map((p) => ({
       id: p.id, abonnementId: p.abonnementId, terrasseId: p.terrasseId,

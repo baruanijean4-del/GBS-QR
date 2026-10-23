@@ -886,6 +886,18 @@ export interface DB {
   factures: Facture[];
   /** Catalogue de démarrage global (photos génériques), importable par établissement */
   catalogueProduits: ProduitCatalogue[];
+  /** Encaissements (argent physique en caisse — hôtel, notes) */
+  encaissements: Array<{
+    id: string; terrasseId: string;
+    montantCdf: number; montantUsd: number;
+    mode: string; statut: string; creeLe: string;
+  }>;
+  /** Remises de caisse (déclarations réceptionniste/serveuse) */
+  remisesCaisse: Array<{
+    id: string; terrasseId: string;
+    statut: string; recuCdf: number; recuUsd: number;
+    creeLe: string;
+  }>;
   compteurFacture: number;
 }
 

@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // GBS — Magasin de données CONNECTÉ : la base vit sur le
 // serveur (MySQL partagé entre tous les appareils). Le frontend
 // interroge une image filtrée par portée (polling ~4 s) et
@@ -632,8 +632,16 @@ export function soldeBoutique(db: DB, terrasseId: string): { cdf: number; usdCen
   for (const c of db.commandes) {
     if (c.terrasseId === terrasseId && c.payeeLe) { cdf += c.totalCdf; usd += c.totalUsdCentimes }
   }
+  // Encaissements (hôtel, notes) — argent physique en caisse
+  for (const e of (db.encaissements ?? [])) {
+    if (e.terrasseId === terrasseId) { cdf += e.montantCdf; usd += e.montantUsd }
+  }
+  // Remises de caisse validées (argent remis au gérant)
+  for (const r of (db.remisesCaisse ?? [])) {
+    if (r.terrasseId === terrasseId && r.statut === "VALIDE") { cdf -= r.recuCdf; usd -= r.recuUsd }
+  }
   for (const d of db.depots) {
-    if (d.terrasseId === terrasseId && d.statut === 'VALIDE') { cdf -= d.declareCdf; usd -= d.declareUsdCentimes }
+    if (d.terrasseId === terrasseId && d.statut === "VALIDE") { cdf -= d.declareCdf; usd -= d.declareUsdCentimes }
   }
   for (const d of db.depenses) {
     if (d.terrasseId === terrasseId) { cdf -= d.montantCdf; usd -= d.montantUsdCentimes }
