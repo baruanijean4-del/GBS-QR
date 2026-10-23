@@ -2,6 +2,8 @@
 // GBS — Routeur tRPC « remises » : déclaration de caisse
 // Règle : « Là où l'argent disparaît, GBS le voit. »
 // Table existante : remises_caisse (migration 0018)
+// Convention : la caisse est par TERRASSE (établissement).
+// La DB utilise la colonne `organisationId` pour stocker le `terrasseId`.
 // ============================================================
 
 import { and, desc, eq } from "drizzle-orm";
@@ -19,7 +21,7 @@ export const remisesRouter = createRouter({
   // ── 1. Le réceptionniste DÉCLARE sa caisse ────────────────
   declarer: protegee
     .input(z.object({
-      organisationId: z.string().length(40),
+      terrasseId: z.string().length(40),
       attenduCdf: z.number().int().min(0),
       attenduUsd: z.number().int().min(0),
       recuCdf: z.number().int().min(0),
@@ -28,7 +30,7 @@ export const remisesRouter = createRouter({
     }))
     .mutation(async ({ ctx, input }) => {
       const acteurId = ctx.session.utilisateurId;
-      const role = await exigerPermission(acteurId, input.organisationId, "DECLARER_CAISSE");
+      const role = await exigerPermission(acteurId, input.terrasseId, "DECLARER_CAISSE");
 
       const ecartCdf = input.recuCdf - input.attenduCdf;
       const ecartUsd = input.recuUsd - input.attenduUsd;
@@ -41,9 +43,10 @@ export const remisesRouter = createRouter({
       const id = uid("rem");
       const le = maintenant();
 
+      // Insertion : la DB utilise organisationId pour stocker le terrasseId
       await db().insert(s.remisesCaisse).values({
         id,
-        organisationId: input.organisationId,
+        organisationId: input.terrasseId,  // mapping terrasse → organisation (colonne legacy)
         employeId: acteurId,
         attenduCdf: input.attenduCdf,
         attenduUsd: input.attenduUsd,
@@ -58,17 +61,18 @@ export const remisesRouter = createRouter({
         acteurId, role, "CAISSE_DECLAREE",
         `Attendu ${input.attenduCdf} CDF / Declare ${input.recuCdf} CDF - Ecart ${ecartCdf} CDF, ${ecartUsd} cent. USD`,
         {
-          terrasseId: input.organisationId,
+          terrasseId: input.terrasseId,
           avant: JSON.stringify({ attenduCdf: input.attenduCdf, attenduUsd: input.attenduUsd }),
           apres: JSON.stringify({ recuCdf: input.recuCdf, recuUsd: input.recuUsd }),
         },
       );
 
       if (aEcart) {
+        // Seuil personnalisé par l'établissement (ou défaut)
         const [seuils] = await db()
           .select({ cdf: s.terrasses.seuilEcartCdf, usd: s.terrasses.seuilEcartUsd })
           .from(s.terrasses)
-          .where(eq(s.terrasses.organisationId, input.organisationId))
+          .where(eq(s.terrasses.id, input.terrasseId))
           .limit(1);
 
         const seuilCdf = seuils?.cdf ?? SEUIL_CDF_DEFAUT;
@@ -76,7 +80,7 @@ export const remisesRouter = createRouter({
         const critique = Math.abs(ecartCdf) > seuilCdf || Math.abs(ecartUsd) > seuilUsd;
 
         await alerter(
-          input.organisationId,
+          input.terrasseId,
           critique ? "ECART_CAISSE_CRITIQUE" : "ECART_CAISSE",
           `Ecart ${critique ? "CRITIQUE" : ""} de ${ecartCdf} CDF / ${ecartUsd} cent. USD (seuils : ${seuilCdf}/${seuilUsd}). Motif : ${input.motifEcart ?? "-"}`,
         );
@@ -164,16 +168,16 @@ export const remisesRouter = createRouter({
 
   // ── 4. Le gérant LISTE les déclarations en attente ────────
   listerEnAttente: protegee
-    .input(z.object({ organisationId: z.string().length(40) }))
+    .input(z.object({ terrasseId: z.string().length(40) }))
     .query(async ({ ctx, input }) => {
       const acteurId = ctx.session.utilisateurId;
-      await exigerPermission(acteurId, input.organisationId, "VALIDER_CAISSE");
+      await exigerPermission(acteurId, input.terrasseId, "VALIDER_CAISSE");
 
       const lignes = await db()
         .select()
         .from(s.remisesCaisse)
         .where(and(
-          eq(s.remisesCaisse.organisationId, input.organisationId),
+          eq(s.remisesCaisse.organisationId, input.terrasseId),
           eq(s.remisesCaisse.statut, "EN_ATTENTE"),
         ))
         .orderBy(desc(s.remisesCaisse.creeLe))
