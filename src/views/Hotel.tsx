@@ -386,7 +386,7 @@ function FeuilleCreation({ terrasseId, surFermer, surFait }: {
             setCharge(true)
             void (async () => {
               try {
-                await creerChambreHotel({ terrasseId, numero: numero.trim(), type, prixNuitCdf: prixN, prixHeureCdf: prixH, photoUrl: photoUrl.trim() || null })
+                await creerChambreHotel({ terrasseId, numero: numero.trim(), type, prixNuitCdf: prixN, prixHeureCdf: prixH })
                 toast.success(t('hotel.chambre_creee', { n: numero.trim() }))
                 surFait()
               } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
