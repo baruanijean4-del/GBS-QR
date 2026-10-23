@@ -21,10 +21,8 @@ import { LogoGBS } from './Home'
 import { OngletMaNote } from './MaNote'
 import { OngletBillardClient } from './Billard'
 import { OngletChambres } from './Chambres'
-import {
-  FournisseurPortee, annulerMaCommande, contexteTable, ecriturePermise, noterServeuse,
-  ouvrirSessionClient, passerCommande, serveuseDeTable, useDB, useDBPret, utilisateurDe,
-} from '@/lib/store'
+import { FournisseurPortee, annulerMaCommande, contexteTable, ecriturePermise, noterServeuse,
+  ouvrirSessionClient, passerCommande, serveuseDeTable, useDB, useDBPret, utilisateurDe, prolongerSejour } from '@/lib/store'
 import type { Commande, LigneCommande, Portee, Produit } from '@/lib/types'
 import { TYPES_RECHERCHE_PRODUIT } from '@/lib/types'
 import { useT } from '@/i18n'
@@ -74,6 +72,9 @@ function VueClientInterne({ token, client, setClient }: {
   const [panier, setPanier] = useState<Record<string, number>>({})
   const [voirPanier, setVoirPanier] = useState(false)
   const [ongletChoisi, setOnglet] = useState<string | null>(null)
+  const [prolongation, setProlongation] = useState(false)
+  const [prolongationMode, setProlongationMode] = useState<'NUIT' | 'HEURE'>('NUIT')
+  const [prolongationCharge, setProlongationCharge] = useState(false)
   const [cleCommande, setCleCommande] = useState(() => uid('cle'))
   const [scan, setScan] = useState(false)
   const [recherche, setRecherche] = useState('')
@@ -346,6 +347,7 @@ function VueClientInterne({ token, client, setClient }: {
             <div className="mt-4 flex flex-col gap-2">
               <GrosBouton onClick={() => setOnglet('menu')}>Commander le petit-déjeuner</GrosBouton>
               <GrosBouton ton="secondaire" onClick={() => toast.info('Appel à la réception envoyé.')}>Appeler la réception</GrosBouton>
+              <GrosBouton ton="secondaire" onClick={() => setProlongation(true)}>Prolonger le séjour</GrosBouton>
             </div>
           </Carte>
         </div>
@@ -437,6 +439,44 @@ function VueClientInterne({ token, client, setClient }: {
           <CircleCheck className="h-5 w-5" /> {t('client.envoyer_serveuse')}
         </GrosBouton>
         <p className="mt-3 text-center text-xs text-sable/50">{t('client.table_paiement', { numero: table.numero })}</p>
+      </Feuille>
+
+      <Feuille ouvert={prolongation} surFermer={() => setProlongation(false)} titre="Prolonger le séjour">
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-sable/80">Choisissez la durée de la prolongation :</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setProlongationMode('NUIT')}
+              className={`rounded-2xl border px-4 py-3 text-sm font-bold ${prolongationMode === 'NUIT' ? 'border-ambre bg-ambre/15 text-ambre' : 'border-white/10 text-sable/60'}`}
+            >
+              1 nuit
+            </button>
+            <button
+              onClick={() => setProlongationMode('HEURE')}
+              className={`rounded-2xl border px-4 py-3 text-sm font-bold ${prolongationMode === 'HEURE' ? 'border-ambre bg-ambre/15 text-ambre' : 'border-white/10 text-sable/60'}`}
+            >
+              1 heure
+            </button>
+          </div>
+          <GrosBouton
+            charge={prolongationCharge}
+            onClick={() => {
+              if (prolongationCharge) return
+              setProlongationCharge(true)
+              void (async () => {
+                try {
+                  await prolongerSejour({ token, clientSessionId: client.sessionId, mode: prolongationMode })
+                  toast.success('Prolongation ajoutée à votre note !')
+                  setProlongation(false)
+                  window.location.reload()
+                } catch (e) { toast.error(e instanceof Error ? e.message : 'Erreur lors de la prolongation.') }
+                finally { setProlongationCharge(false) }
+              })()
+            }}
+          >
+            Confirmer la prolongation
+          </GrosBouton>
+        </div>
       </Feuille>
     </div>
   )

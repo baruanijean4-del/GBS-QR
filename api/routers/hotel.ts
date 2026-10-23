@@ -368,4 +368,60 @@ export const hotelRouter = createRouter({
       
       return { photoUrl: photos.photoUrl };
     }),
+
+  /** Client : prolonge son séjour (ajoute une nuit ou une heure à la note). */
+  prolongerSejour: publicQuery
+    .input(z.object({
+      token: z.string(),
+      clientSessionId: z.string(),
+      mode: z.enum(["NUIT", "HEURE"]),
+    }))
+    .mutation(async ({ input }) => {
+      const table = await resoudreTableParToken(input.token);
+      if (!table) erreur("QR code invalide.");
+      
+      // On trouve le séjour en cours pour ce client
+      const [sess] = await db().select().from(s.clientsSession)
+        .where(eq(s.clientsSession.id, input.clientSessionId)).limit(1);
+      if (!sess) erreur("Session client invalide.");
+      
+      const [sejour] = await db().select().from(s.sejours)
+        .where(and(
+          eq(s.sejours.terrasseId, table.terrasseId),
+          eq(s.sejours.statut, "EN_COURS"),
+        )).limit(1);
+      if (!sejour) erreur("Aucun séjour en cours.");
+      
+      const [chambre] = await db().select().from(s.chambres)
+        .where(eq(s.chambres.id, sejour.chambreId)).limit(1);
+      if (!chambre) erreur("Chambre introuvable.");
+      
+      const montant = input.mode === "HEURE"
+        ? (chambre.prixHeureCdf ?? 0)
+        : chambre.prixNuitCdf;
+      
+      // On ajoute la ligne à la note
+      await ajouterLignesNoteDb({
+        clientSessionId: input.clientSessionId,
+        terrasseId: table.terrasseId,
+        espace: "HOTEL",
+        type: "CHAMBRE",
+        creeParId: "client",
+        lignes: [{
+          refId: sejour.id + "_prolong_" + Date.now(),
+          libelle: `Prolongation ${input.mode === "HEURE" ? "(heure)" : "(nuit)"}` ,
+          quantite: 1,
+          montantCdf: montant,
+          montantUsd: 0,
+          tauxUsdCdf: null,
+          statut: "CONFIRMEE",
+        }],
+      });
+      
+      await journaliser("client", "CLIENT", "SEJOUR_PROLONGE",
+        `Prolongation ${input.mode === "HEURE" ? "1 heure" : "1 nuit"} — ${montant} FC`,
+        { terrasseId: table.terrasseId });
+      
+      return { ok: true, montant };
+    }),
 });

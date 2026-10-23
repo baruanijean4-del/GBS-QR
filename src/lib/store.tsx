@@ -764,6 +764,11 @@ export function modifierTarif(plan: string, tranche: string, prixCentimes: numbe
  *  si referenceMobile est fourni, c'est la référence Airtel Money
  *  déclarée par le client (flux manuel — le caissier la vérifie sur
  *  son téléphone avant de valider ; unique par établissement). */
+/** Billard : classement public des meilleurs joueurs (par série de victoires) */
+export function classementJoueursBillard(terrasseId: string) {
+  return api.billard.classementJoueurs.query({ terrasseId })
+}
+
 export function acheterTokenBillard(token: string, clientSessionId: string, referenceMobile?: string) {
   return exec(api.billard.acheterToken.mutate({ token, clientSessionId, referenceMobile }))
 }
@@ -796,6 +801,15 @@ export function exporterComptabiliteJour(terrasseId: string, jour: string) {
 // ---------- Hôtel (boucle 9) ----------
 
 /** Direction : crée une chambre (numéro unique par établissement) */
+/** Client : prolonge son séjour (ajoute une nuit ou une heure à la note). */
+export function prolongerSejour(input: {
+  token: string;
+  clientSessionId: string;
+  mode: 'NUIT' | 'HEURE';
+}) {
+  return exec(api.hotel.prolongerSejour.mutate(input))
+}
+
 export function creerChambreHotel(input: {
   terrasseId: string; numero: string; type: 'SIMPLE' | 'DOUBLE' | 'SUITE';
   prixNuitCdf: number; prixHeureCdf: number | null;
