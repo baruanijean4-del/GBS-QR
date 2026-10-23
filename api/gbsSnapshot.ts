@@ -108,6 +108,7 @@ export async function chargerTout(): Promise<DB> {
     })),
     depots: depots.map((d) => ({
       id: d.id, sessionId: d.sessionId, terrasseId: d.terrasseId, serveuseId: d.serveuseId,
+      typeDepot: d.typeDepot as "CHAMBRE" | "COMMANDE",
       montantAttenduCdf: d.attenduCdf, montantAttenduUsdCentimes: d.attenduUsd,
       declareCdf: d.declareCdf, declareUsdCentimes: d.declareUsd,
       statut: d.statut as "DECLARE" | "VALIDE" | "CONTESTE",

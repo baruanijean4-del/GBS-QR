@@ -688,6 +688,7 @@ export interface Depot {
   sessionId: string;
   terrasseId: string;
   serveuseId: string;
+  typeDepot: "CHAMBRE" | "COMMANDE";
   montantAttenduCdf: number;
   montantAttenduUsdCentimes: number;
   declareCdf: number;

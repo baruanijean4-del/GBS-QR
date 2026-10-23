@@ -13,13 +13,13 @@
 // ============================================================
 
 import { useState } from 'react'
-import { ChefHat, ClipboardList, Package, PackageOpen, Plus } from 'lucide-react'
+import { ChefHat, ClipboardList, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { BoutonDeconnexion, CoquilleRole, PorteRole } from '@/components/Coquille'
 import { Carte, Chargement, Feuille, GrosBouton, Pill, SaisieNombre, Vide, classeSaisie } from '@/components/gbs'
 import { versBase } from '@contracts/traiteur'
 import { fmtUSD } from '@/lib/format'
-import { rolesSur, useDB } from '@/lib/store'
+import { useDB } from '@/lib/store'
 import type { Terrasse, Utilisateur } from '@/lib/types'
 import { trpc } from '@/providers/trpc'
 import { useT } from '@/i18n'
@@ -161,98 +161,6 @@ function FicheProduction({ planId, entreprise, jour, heure, nbPersonnes }: { pla
 }
 
 // ---------- Magasinier : bons de sortie + comptage à l'aveugle ----------
-
-function PanneauMagasinier({ terrasse }: { terrasse: Terrasse }) {
-  const t = useT()
-  const db = useDB()
-  const [produitComptage, setProduitComptage] = useState('')
-  const [quantiteComptee, setQuantiteComptee] = useState('')
-  const plans = trpc.traiteur.listePlans.useQuery({ terrasseId: terrasse.id }, { refetchInterval: 8000 })
-  const ecarts = trpc.traiteur.listeEcarts.useQuery({ terrasseId: terrasse.id }, { refetchInterval: 10000 })
-  const produits = db.produits.filter((p) => p.terrasseId === terrasse.id && p.actif)
-
-  const emettre = trpc.traiteur.emettreBonSortie.useMutation({
-    onSuccess: () => { toast.success(t('trt.bon_emis')); void plans.refetch() },
-    onError: (e) => toast.error(e.message),
-  })
-  const compter = trpc.traiteur.comptageAveugle.useMutation({
-    onSuccess: (r) => {
-      setQuantiteComptee('')
-      toast.success(t(r.ecart === 0 ? 'trt.comptage_parfait' : 'trt.comptage_ecart', { n: Math.abs(r.ecart) }))
-      void ecarts.refetch()
-    },
-    onError: (e) => toast.error(e.message),
-  })
-
-  return (
-    <div className="flex flex-col gap-4 px-4 pt-4">
-      <p className="text-xs font-bold uppercase tracking-widest text-sable/50">{t('trt.bons')}</p>
-      {(plans.data ?? []).filter((p) => p.statut === 'EN_COURS').map((p) => (
-        <Carte key={p.id}>
-          <div className="mb-2 flex items-center justify-between">
-            <p className="font-bold text-white">{p.entreprise}</p>
-            <Pill ton="ambre">{p.jour} {p.heure}</Pill>
-          </div>
-          <BonSortie planId={p.id} onEmettre={() => emettre.mutate({ planId: p.id })} enCours={emettre.isPending} />
-        </Carte>
-      ))}
-      {(plans.data ?? []).filter((p) => p.statut === 'EN_COURS').length === 0 && (
-        <Vide icone={<PackageOpen className="h-8 w-8" />} titre={t('trt.aucun_plan')} detail={t('trt.aucun_plan_mag_d')} />
-      )}
-
-      {/* Comptage à l'aveugle : le théorique n'est JAMAIS affiché (§7bis) */}
-      <Carte>
-        <p className="mb-2 font-bold text-white">{t('trt.comptage')}</p>
-        <p className="mb-3 text-xs text-sable/60">{t('trt.comptage_d')}</p>
-        <select className={`${classeSaisie} mb-2`} value={produitComptage} onChange={(e) => setProduitComptage(e.target.value)} aria-label={t('trt.ingredient')}>
-          <option value="">{t('trt.choisir_produit')}</option>
-          {produits.map((p) => <option key={p.id} value={p.id}>{p.nom} ({p.unite ?? 'pièce'})</option>)}
-        </select>
-        <div className="mb-3">
-          <SaisieNombre valeur={quantiteComptee} onChange={setQuantiteComptee} placeholder={t('trt.quantite_comptee')} />
-        </div>
-        <GrosBouton petit desactive={!produitComptage || !quantiteComptee || compter.isPending}
-          onClick={() => compter.mutate({ terrasseId: terrasse.id, produitId: produitComptage, quantiteComptee: parseInt(quantiteComptee) || 0 })}>
-          {t('trt.enregistrer_comptage')}
-        </GrosBouton>
-      </Carte>
-
-      {/* Écarts en QUANTITÉ seulement (§7bis) */}
-      {(ecarts.data ?? []).length > 0 && (
-        <Carte>
-          <p className="mb-2 font-bold text-white">{t('trt.ecarts')}</p>
-          {ecarts.data!.slice(0, 10).map((e) => (
-            <p key={e.id} className="flex justify-between py-1 text-sm">
-              <span className="text-sable/80">{e.produit}</span>
-              <b className={e.ecart === 0 ? 'text-succes' : 'text-danger-clair'}>
-                {e.ecart === 0 ? '✓' : `${e.ecart > 0 ? '-' : '+'}${Math.abs(e.ecart)} ${e.unite ?? ''}`}
-              </b>
-            </p>
-          ))}
-        </Carte>
-      )}
-    </div>
-  )
-}
-
-function BonSortie({ planId, onEmettre, enCours }: { planId: string; onEmettre: () => void; enCours: boolean }) {
-  const t = useT()
-  const bon = trpc.traiteur.voirBonSortie.useQuery({ planId }, { retry: false })
-  if (bon.data) {
-    return (
-      <div>
-        {bon.data.lignes.map((l) => (
-          <p key={l.produit} className="flex justify-between py-1 text-sm">
-            <span className="text-sable/80">{l.produit}{l.lot ? ` · ${l.lot}` : ''}</span>
-            <b className="text-white">{l.quantite}</b>
-          </p>
-        ))}
-        <Pill ton="vert">{t('trt.bon_emis_pill')}</Pill>
-      </div>
-    )
-  }
-  return <GrosBouton petit desactive={enCours} onClick={onEmettre}><Package className="h-4 w-4" /> {t('trt.emettre_bon')}</GrosBouton>
-}
 
 // ---------- Gérant : plans du jour (sans prix) ----------
 
@@ -455,27 +363,23 @@ function CoutsPlan({ planId }: { planId: string }) {
 
 function EspaceTraiteur({ moi, terrasse }: { moi: Utilisateur; terrasse: Terrasse }) {
   const t = useT()
-  const db = useDB()
-  // Le rôle vient des affectations sur la terrasse (jamais d'un rôle
-  // global) : CHEF en priorité si les deux rôles sont affectés.
-  const estChef = rolesSur(db, moi.id, terrasse.id).includes('CHEF')
   return (
     <CoquilleRole
       titre={terrasse.nom}
-      sousTitre={`${moi.nom} — ${t(estChef ? 'trt.role_chef' : 'trt.role_magasinier')}`}
+      sousTitre={`${moi.nom} — ${t('trt.role_chef')}`}
       droite={<BoutonDeconnexion />}
       actif="traiteur"
       onChange={() => {}}
-      onglets={[{ id: 'traiteur', label: t('trt.onglet'), icone: estChef ? <ChefHat className="h-6 w-6" /> : <Package className="h-6 w-6" /> }]}
+      onglets={[{ id: 'traiteur', label: t('trt.onglet'), icone: <ChefHat className="h-6 w-6" /> }]}
     >
-      {estChef ? <PanneauChef terrasse={terrasse} /> : <PanneauMagasinier terrasse={terrasse} />}
+      <PanneauChef terrasse={terrasse} />
     </CoquilleRole>
   )
 }
 
 export function VueTraiteur() {
   return (
-    <PorteRole rolesVoulus={['CHEF', 'MAGASINIER']} indiceDemo="">
+    <PorteRole rolesVoulus={['CHEF']} indiceDemo="">
       {({ moi, terrasse }) => <EspaceTraiteur moi={moi} terrasse={terrasse} />}
     </PorteRole>
   )

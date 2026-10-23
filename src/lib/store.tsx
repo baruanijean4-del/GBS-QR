@@ -537,8 +537,8 @@ export function cloturerSession(sessionId: string) {
   return exec(api.gbs.cloturerSession.mutate({ sessionId }))
 }
 
-export function declarerDepot(sessionId: string, cdf: number, usdCentimes: number, motifEcart?: string) {
-  return exec(api.gbs.declarerDepot.mutate({ sessionId, cdf, usdCentimes, motifEcart }))
+export function declarerDepot(sessionId: string, cdf: number, usdCentimes: number, typeDepot: 'CHAMBRE' | 'COMMANDE' = 'COMMANDE', motifEcart?: string) {
+  return exec(api.gbs.declarerDepot.mutate({ sessionId, cdf, usdCentimes, typeDepot, motifEcart }))
 }
 
 // ---------- Gérant / Propriétaire ----------

@@ -292,7 +292,7 @@ export function DepotsGerant({ terrasseId, acteurId }: { terrasseId: string; act
   const db = useDB()
   const [contestDepot, setContestDepot] = useState<string | null>(null)
   const [motif, setMotif] = useState('')
-  const depots = db.depots.filter((d) => d.terrasseId === terrasseId)
+  const depots = db.depots.filter((d) => d.terrasseId === terrasseId && d.typeDepot === 'COMMANDE')
   const enAttente = depots.filter((d) => d.statut === 'DECLARE')
   const historique = depots.filter((d) => d.statut !== 'DECLARE')
 

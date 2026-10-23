@@ -441,6 +441,7 @@ export const depots = pgTable("depots", {
   sessionId: varchar("session_id", { length: 40 }).notNull(),
   terrasseId: varchar("terrasse_id", { length: 40 }).notNull(),
   serveuseId: varchar("serveuse_id", { length: 40 }).notNull(),
+  typeDepot: varchar("type_depot", { length: 12 }).notNull().default("COMMANDE"), // CHAMBRE | COMMANDE
   attenduCdf: integer("attendu_cdf").notNull().default(0),
   attenduUsd: integer("attendu_usd").notNull().default(0),
   declareCdf: integer("declare_cdf").notNull().default(0),

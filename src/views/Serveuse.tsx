@@ -15,7 +15,7 @@ import { LOCALES, useI18n, useT } from '@/i18n'
 import {
   FournisseurPortee, attenduSession, cloturerSession, confirmerCommande, declarerDepot,
   impayesSession, marquerAlertesLues, marquerPayee, marquerServie, ouvrirSessionService, sessionOuverte,
-  tablesDeServeuse, useDB, useSession, voirNouvellesCommandes,
+  rolesSur, tablesDeServeuse, useDB, useSession, voirNouvellesCommandes,
 } from '@/lib/store'
 import type { Commande, Portee, Terrasse, Utilisateur } from '@/lib/types'
 
@@ -41,6 +41,8 @@ function VueServeuseInterne() {
 function EspaceServeuse({ moi, terrasse }: { moi: Utilisateur; terrasse: Terrasse }) {
   const t = useT()
   const db = useDB()
+  const roles = rolesSur(db, moi.id, terrasse.id)
+  const estBillardier = roles.includes('BILLARDIER') && !roles.includes('SERVEUSE')
   const [onglet, setOnglet] = useState('commandes')
 
   const mesTables = tablesDeServeuse(db, moi.id)
@@ -102,7 +104,7 @@ function EspaceServeuse({ moi, terrasse }: { moi: Utilisateur; terrasse: Terrass
   return (
     <CoquilleRole
       titre={terrasse.nom}
-      sousTitre={`${moi.nom} — ${t('role.serveuse')}`}
+      sousTitre={`${moi.nom} — ${t(estBillardier ? 'role.billardier' : 'role.serveuse')}`}
       droite={
         <div className="flex items-center gap-2">
           {!sonActive && (
@@ -126,15 +128,21 @@ function EspaceServeuse({ moi, terrasse }: { moi: Utilisateur; terrasse: Terrass
       }
       actif={onglet}
       onChange={setOnglet}
-      onglets={[
-        { id: 'commandes', label: t('serveuse.onglet_commandes'), icone: <Bell className="h-6 w-6" />, badge: enAttente + nbNouvelles },
-        { id: 'tables', label: t('serveuse.onglet_tables'), icone: <Table2 className="h-6 w-6" /> },
-        ...(aBillards ? [{ id: 'billards', label: t('billard.onglet_gestion'), icone: <Target className="h-6 w-6" /> }] : []),
-        { id: 'caisse', label: t('serveuse.onglet_caisse'), icone: <Wallet className="h-6 w-6" /> },
-        { id: 'notes', label: t('serveuse.onglet_notes'), icone: <ReceiptText className="h-6 w-6" /> },
-        { id: 'note', label: t('serveuse.onglet_note'), icone: <Star className="h-6 w-6" /> },
-        { id: 'notifs', label: t('serveuse.onglet_notifs'), icone: <Inbox className="h-6 w-6" />, badge: notifsNonLues },
-      ]}
+      onglets={
+        estBillardier
+          ? [
+              ...(aBillards ? [{ id: 'billards', label: t('billard.onglet_gestion'), icone: <Target className="h-6 w-6" /> }] : []),
+            ]
+          : [
+              { id: 'commandes', label: t('serveuse.onglet_commandes'), icone: <Bell className="h-6 w-6" />, badge: enAttente + nbNouvelles },
+              { id: 'tables', label: t('serveuse.onglet_tables'), icone: <Table2 className="h-6 w-6" /> },
+              ...(aBillards ? [{ id: 'billards', label: t('billard.onglet_gestion'), icone: <Target className="h-6 w-6" /> }] : []),
+              { id: 'caisse', label: t('serveuse.onglet_caisse'), icone: <Wallet className="h-6 w-6" /> },
+              { id: 'notes', label: t('serveuse.onglet_notes'), icone: <ReceiptText className="h-6 w-6" /> },
+              { id: 'note', label: t('serveuse.onglet_note'), icone: <Star className="h-6 w-6" /> },
+              { id: 'notifs', label: t('serveuse.onglet_notifs'), icone: <Inbox className="h-6 w-6" />, badge: notifsNonLues },
+            ]
+      }
     >
       {onglet === 'commandes' && <OngletCommandes commandes={commandes} />}
       {onglet === 'tables' && <OngletMesTables mesTables={mesTables} commandes={commandes} />}
@@ -402,19 +410,34 @@ function OngletCaisse({ terrasseId, serveuseId }: { terrasseId: string; serveuse
               />
             </div>
           )}
-          <GrosBouton
-            ton={ecart ? 'danger' : 'primaire'}
-            desactive={ecart && !motifEcart.trim()}
-            onClick={async () => {
-              try {
-                await declarerDepot(derniereCloturee.id, cdfSaisi, usdSaisi, ecart ? motifEcart.trim() : undefined)
-                setCdf(''); setUsd(''); setMotifEcart('')
-                toast.success(ecart ? t('serveuse.ecart_toast') : t('serveuse.depot_toast'))
-              } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
-            }}
-          >
-            <HandCoins className="h-5 w-5" /> {ecart ? t('serveuse.signaler_ecart') : t('serveuse.confirmer_depot')}
-          </GrosBouton>
+          <div className="flex flex-col gap-2">
+            <GrosBouton
+              ton={ecart ? 'danger' : 'primaire'}
+              desactive={ecart && !motifEcart.trim()}
+              onClick={async () => {
+                try {
+                  await declarerDepot(derniereCloturee.id, cdfSaisi, usdSaisi, 'COMMANDE', ecart ? motifEcart.trim() : undefined)
+                  setCdf(''); setUsd(''); setMotifEcart('')
+                  toast.success(ecart ? t('serveuse.ecart_toast') : t('serveuse.depot_toast'))
+                } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
+              }}
+            >
+              <HandCoins className="h-5 w-5" /> Déclarer Caisse (Commandes)
+            </GrosBouton>
+            <GrosBouton
+              ton="secondaire"
+              desactive={ecart && !motifEcart.trim()}
+              onClick={async () => {
+                try {
+                  await declarerDepot(derniereCloturee.id, cdfSaisi, usdSaisi, 'CHAMBRE', ecart ? motifEcart.trim() : undefined)
+                  setCdf(''); setUsd(''); setMotifEcart('')
+                  toast.success('Dépôt Chambre déclaré !')
+                } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
+              }}
+            >
+              <HandCoins className="h-5 w-5" /> Déclarer Chambre
+            </GrosBouton>
+          </div>
         </Carte>
       )}
 

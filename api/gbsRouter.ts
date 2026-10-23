@@ -929,6 +929,7 @@ export const gbsRouter = createRouter({
     .input(z.object({
       sessionId: z.string(),
       cdf: z.number().int().min(0), usdCentimes: z.number().int().min(0),
+      typeDepot: z.enum(["CHAMBRE", "COMMANDE"]).default("COMMANDE"),
       // « Signaler un écart » : justification obligatoire si le cash compté
       // diffère de l'attendu (tracée au journal + alerte immédiate)
       motifEcart: z.string().max(200).optional(),
@@ -949,6 +950,7 @@ export const gbsRouter = createRouter({
       }
       await db().insert(s.depots).values({
         id: uid("dep"), sessionId: sess.id, terrasseId: sess.terrasseId, serveuseId,
+        typeDepot: input.typeDepot,
         attenduCdf: attendu.cdf, attenduUsd: attendu.usdCentimes,
         declareCdf: input.cdf, declareUsd: input.usdCentimes,
         statut: "DECLARE", declareLe: maintenant(),

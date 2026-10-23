@@ -267,11 +267,9 @@ export function Invitation() {
                 toast.success(t('invit.bienvenue'))
                 naviguer(
                   r.role === 'GERANT' ? '/g'
-                    : r.role === 'RECEPTIONNISTE' || r.role === 'GOUVERNANTE' ? '/h'
-                      : r.role === 'CHEF' || r.role === 'MAGASINIER' ? '/cuisine'
-                        : r.role === 'CAISSIER' ? '/c'
-                          : r.role === 'BILLARDIER' ? '/b'
-                            : '/s'
+                    : r.role === 'RECEPTIONNISTE' ? '/h'
+                      : r.role === 'CHEF' ? '/cuisine'
+                        : '/s'
                 )
               } catch (e) {
                 toast.error(e instanceof Error ? e.message : t('commun.erreur'))
