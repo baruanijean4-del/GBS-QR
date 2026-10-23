@@ -50,6 +50,7 @@ export async function chargerTout(): Promise<DB> {
     invitations, demandesStock, alertes, mouvementsStock, auditLog, plansTarifs,
     abonnements, historiqueTranches, paiements, factures, metaLignes, catalogueProduits,
     depenses, encaissements, remisesCaisse,
+    chambres, sejours, notes, noteLignes,
   ] = await Promise.all([
     db.select().from(s.organisations),
     db.select().from(s.utilisateurs),
@@ -78,6 +79,10 @@ export async function chargerTout(): Promise<DB> {
     db.select().from(s.depenses),
     db.select().from(s.encaissements),
     db.select().from(s.remisesCaisse),
+    db.select().from(s.chambres),
+    db.select().from(s.sejours),
+    db.select().from(s.notes),
+    db.select().from(s.noteLignes),
   ]);
 
   return {
@@ -170,6 +175,30 @@ export async function chargerTout(): Promise<DB> {
       id: r.id, terrasseId: r.organisationId, // mapping legacy DB→client
       statut: r.statut, recuCdf: r.recuCdf, recuUsd: r.recuUsd,
       creeLe: r.creeLe,
+    })),
+    chambres: chambres.map((c) => ({
+      id: c.id, terrasseId: c.terrasseId, numero: c.numero, type: c.type,
+      statut: c.statut, prixNuitCdf: c.prixNuitCdf, prixHeureCdf: c.prixHeureCdf,
+      photoUrl: c.photoUrl, creeLe: c.creeLe,
+    })),
+    sejours: sejours.map((sj) => ({
+      id: sj.id, chambreId: sj.chambreId, terrasseId: sj.terrasseId,
+      clientNom: sj.clientNom, pieceIdentite: sj.pieceIdentite, mode: sj.mode,
+      arriveeLe: sj.arriveeLe, departLe: sj.departLe, montantTotalCdf: sj.montantTotalCdf,
+      statut: sj.statut, tauxUsdCdf: sj.tauxUsdCdf, creePar: sj.creePar, creeLe: sj.creeLe,
+    })),
+    notes: notes.map((n) => ({
+      id: n.id, organisationId: n.organisationId, clientId: n.clientId,
+      sejourId: n.sejourId, statut: n.statut, ouverteLe: n.ouverteLe,
+      regleeLe: n.regleeLe, tauxUsdCdf: n.tauxUsdCdf,
+      motifLitige: n.motifLitige, litigeLe: n.litigeLe, litigeDeclarePar: n.litigeDeclarePar,
+    })),
+    noteLignes: noteLignes.map((nl) => ({
+      id: nl.id, noteId: nl.noteId, terrasseId: nl.terrasseId, espace: nl.espace,
+      type: nl.type, refId: nl.refId, libelle: nl.libelle, quantite: nl.quantite,
+      montantCdf: nl.montantCdf, montantUsd: nl.montantUsd, tauxUsdCdf: nl.tauxUsdCdf,
+      statut: nl.statut, creeParId: nl.creeParId, creeLe: nl.creeLe,
+      annuleLe: nl.annuleLe, annulePar: nl.annulePar, motifAnnulation: nl.motifAnnulation,
     })),
     paiements: paiements.map((p) => ({
       id: p.id, abonnementId: p.abonnementId, terrasseId: p.terrasseId,
