@@ -15,7 +15,7 @@
 
 import { useState } from 'react'
 import {
-  BedDouble, BrushCleaning, DoorOpen, LogIn, LogOut, Plus,
+  BedDouble, BrushCleaning, DoorOpen, LogIn, LogOut, Plus, Wallet,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
@@ -27,9 +27,10 @@ import { montantSejourCdf, type ModeSejour, type StatutChambre } from '@contract
 import { fmtCDF, ilYA } from '@/lib/format'
 import {
   FournisseurPortee, checkInChambre, checkOutSejour, creerChambreHotel,
-  marquerChambreNettoyee, modifierChambreHotel, rolesSur, useDB, useSession,
+  marquerChambreNettoyee, modifierChambreHotel, useSession,
 } from '@/lib/store'
 import { BoutonDeconnexion, CoquilleRole, PorteRole } from '@/components/Coquille'
+import { BlocCaisse } from '@/components/Caisse'
 import { BoutonSupportWhatsApp } from '@/components/gbs'
 import type { Terrasse, Utilisateur } from '@/lib/types'
 
@@ -408,7 +409,7 @@ export function VueHotel() {
 function VueHotelInterne() {
   const t = useT()
   return (
-    <PorteRole rolesVoulus={['RECEPTIONNISTE', 'GOUVERNANTE']} indiceDemo={t('hotel.indice_demo')}>
+    <PorteRole rolesVoulus={['RECEPTIONNISTE']} indiceDemo={t('hotel.indice_demo')}>
       {({ moi, terrasse }) => <EspaceHotel moi={moi} terrasse={terrasse} />}
     </PorteRole>
   )
@@ -416,25 +417,28 @@ function VueHotelInterne() {
 
 function EspaceHotel({ moi, terrasse }: { moi: Utilisateur; terrasse: Terrasse }) {
   const t = useT()
-  const db = useDB()
-  const roles = rolesSur(db, moi.id, terrasse.id)
-  // Le rôle décide de l'écran : réception (check-in/out) ou ménage
-  const mode: ModeHotel = roles.includes('RECEPTIONNISTE') ? 'reception' : 'menage'
+  const [onglet, setOnglet] = useState('chambres')
   return (
     <CoquilleRole
       titre={terrasse.nom}
-      sousTitre={`${moi.nom} — ${t(mode === 'reception' ? 'role.receptionniste' : 'role.gouvernante')}`}
+      sousTitre={`${moi.nom} — ${t('role.receptionniste')}`}
       droite={
         <div className="flex items-center gap-1">
           <BoutonSupportWhatsApp />
           <BoutonDeconnexion />
         </div>
       }
-      actif="chambres"
-      onChange={() => undefined}
-      onglets={[{ id: 'chambres', label: t('hotel.onglet'), icone: <DoorOpen className="h-6 w-6" /> }]}
+      actif={onglet}
+      onChange={setOnglet}
+      onglets={[
+        { id: 'chambres', label: t('hotel.onglet'), icone: <DoorOpen className="h-6 w-6" /> },
+        { id: 'caisse', label: t('caisse.onglet'), icone: <Wallet className="h-6 w-6" /> },
+        { id: 'menage', label: t('hotel.menage'), icone: <BrushCleaning className="h-6 w-6" /> },
+      ]}
     >
-      <PanneauHotel terrasseId={terrasse.id} mode={mode} />
+      {onglet === 'chambres' && <PanneauHotel terrasseId={terrasse.id} mode="reception" />}
+      {onglet === 'caisse' && <BlocCaisse terrasseId={terrasse.id} />}
+      {onglet === 'menage' && <PanneauHotel terrasseId={terrasse.id} mode="menage" />}
     </CoquilleRole>
   )
 }

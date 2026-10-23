@@ -204,7 +204,7 @@ export const TYPES_ETABLISSEMENT: Record<TypeEtablissement, TypeEtablissementDef
     modules: ["MENU", "COMMANDES", "CUISINE_BAR", "STOCK", "CAISSE", "ALERTES", "BILLARD_FILE", "CHAMBRES", "FOLIO", "MENAGE", "CATALOGUE"],
     zone: CHAMBRE, zones: CHAMBRES,
     qrAutorises: ["ZONE", "BILLARD"],
-    roles: ["GERANT", "SERVEUSE", "RECEPTIONNISTE", "GOUVERNANTE", "CAISSIER", "BILLARDIER", "CHEF", "MAGASINIER"],
+    roles: ["GERANT", "SERVEUSE", "RECEPTIONNISTE", "CHEF"],
     widgets: ["occupation_chambres", "caisse_jour", "menage", "file_billard", "ventes_jour", "alertes"],
     alertes: [...ALERTES_COMMUNES, "PARTIE_SANS_TOKEN", "TOKEN_ANNULE_PAYE", "JOUEUR_ABSENT", "CHAMBRE_SANS_NOTE", "CHECKOUT_SANS_SOLDE", "MENAGE_NON_VALIDE"],
     fraisInstallationUsd: 1000, zoneUnique: false, rechercheProduit: false,
