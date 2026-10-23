@@ -1080,7 +1080,7 @@ export const gbsRouter = createRouter({
       variante: z.string().trim().max(60).optional(),
       consignable: z.boolean().optional(),
       bouteillesParCasier: z.number().int().min(1).max(48).optional(),
-      photoUrl: z.string().trim().max(500).optional(),
+      photoUrl: z.string().trim().max(2_000_000).optional(), // 2 Mo pour accepter le base64
       // Boucle 3 — formulaire adaptatif : champs optionnels par type
       typeProduit: z.enum(["MARCHANDISE", "CHAMBRE", "SERVICE", "BILLARD"]).optional(),
       unite: z.string().trim().max(20).optional(),
