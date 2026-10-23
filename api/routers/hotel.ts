@@ -15,7 +15,7 @@
 // (audit_log avec établissement + avant/après).
 // ============================================================
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import * as s from "@db/schema";
 import { montantSejourCdf, type ModeSejour } from "@contracts/hotel";
@@ -423,5 +423,33 @@ export const hotelRouter = createRouter({
         { terrasseId: table.terrasseId });
       
       return { ok: true, montant };
+    }),
+
+  /** Serveuse : liste les commandes EN_ATTENTE pour sa terrasse. */
+  voirNouvellesCommandes: protegee
+    .input(z.object({ terrasseId: z.string() }))
+    .query(async ({ input, ctx }) => {
+      const acteurId = ctx.session.utilisateurId;
+      const roles = await rolesSurDb(acteurId, input.terrasseId);
+      if (roles.length === 0) erreur("Accès réservé au personnel de l'établissement.");
+      
+      const commandes = await db().select({
+        id: s.commandes.id,
+        tableId: s.commandes.tableId,
+        clientSessionId: s.commandes.clientSessionId,
+        statut: s.commandes.statut,
+        lignes: s.commandes.lignes,
+        totalCdf: s.commandes.totalCdf,
+        totalUsd: s.commandes.totalUsd,
+        creeLe: s.commandes.creeLe,
+      }).from(s.commandes)
+        .where(and(
+          eq(s.commandes.terrasseId, input.terrasseId),
+          eq(s.commandes.statut, "EN_ATTENTE"),
+        ))
+        .orderBy(desc(s.commandes.creeLe))
+        .limit(20);
+      
+      return commandes;
     }),
 });

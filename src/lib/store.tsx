@@ -810,6 +810,11 @@ export function prolongerSejour(input: {
   return exec(api.hotel.prolongerSejour.mutate(input))
 }
 
+/** Serveuse : liste les commandes EN_ATTENTE pour sa terrasse. */
+export function voirNouvellesCommandes(terrasseId: string) {
+  return api.hotel.voirNouvellesCommandes.query({ terrasseId })
+}
+
 export function creerChambreHotel(input: {
   terrasseId: string; numero: string; type: 'SIMPLE' | 'DOUBLE' | 'SUITE';
   prixNuitCdf: number; prixHeureCdf: number | null;

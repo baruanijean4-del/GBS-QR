@@ -3,7 +3,7 @@
 // service, dépôt de caisse, sa note et ses avis (anonymes).
 // ============================================================
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Bell, CircleAlert, CircleCheck, CirclePlay, CircleStop, ClipboardList, HandCoins, Inbox, ReceiptText, Star, Table2, Target, Wallet } from 'lucide-react'
 import { PanneauBillards } from './Billard'
 import { PanneauNotes } from './NotesStaff'
@@ -15,7 +15,7 @@ import { LOCALES, useI18n, useT } from '@/i18n'
 import {
   FournisseurPortee, attenduSession, cloturerSession, confirmerCommande, declarerDepot,
   impayesSession, marquerAlertesLues, marquerPayee, marquerServie, ouvrirSessionService, sessionOuverte,
-  tablesDeServeuse, useDB, useSession,
+  tablesDeServeuse, useDB, useSession, voirNouvellesCommandes,
 } from '@/lib/store'
 import type { Commande, Portee, Terrasse, Utilisateur } from '@/lib/types'
 
@@ -57,6 +57,46 @@ function EspaceServeuse({ moi, terrasse }: { moi: Utilisateur; terrasse: Terrass
   const enAttente = commandes.filter((c) => c.statut === 'EN_ATTENTE').length
   const notifsNonLues = db.alertes.filter((a) => a.terrasseId === terrasse.id && !a.lu).length
 
+  // Polling des nouvelles commandes (toutes les 10 secondes)
+  const [nbNouvelles, setNbNouvelles] = useState(0)
+
+  useEffect(() => {
+    // On crée un audio "ding" via l'API Web Audio
+    const creerDing = () => {
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.frequency.value = 880
+        gain.gain.setValueAtTime(0.3, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3)
+        osc.start(ctx.currentTime)
+        osc.stop(ctx.currentTime + 0.3)
+      } catch { /* silencieux */ }
+    }
+
+    let dernierNb = -1
+    const poll = async () => {
+      try {
+        const nouvelles = await voirNouvellesCommandes(terrasse.id)
+        const nb = nouvelles.length
+        if (dernierNb >= 0 && nb > dernierNb) {
+          creerDing()
+          toast.info(`🔔 ${nb - dernierNb} nouvelle(s) commande(s) !`)
+        }
+        setNbNouvelles(nb)
+        dernierNb = nb
+      } catch { /* silencieux */ }
+    }
+
+    void poll()
+    const interval = setInterval(poll, 10000)
+    return () => clearInterval(interval)
+  }, [terrasse.id])
+
+
   return (
     <CoquilleRole
       titre={terrasse.nom}
@@ -65,7 +105,7 @@ function EspaceServeuse({ moi, terrasse }: { moi: Utilisateur; terrasse: Terrass
       actif={onglet}
       onChange={setOnglet}
       onglets={[
-        { id: 'commandes', label: t('serveuse.onglet_commandes'), icone: <Bell className="h-6 w-6" />, badge: enAttente },
+        { id: 'commandes', label: t('serveuse.onglet_commandes'), icone: <Bell className="h-6 w-6" />, badge: enAttente + nbNouvelles },
         { id: 'tables', label: t('serveuse.onglet_tables'), icone: <Table2 className="h-6 w-6" /> },
         ...(aBillards ? [{ id: 'billards', label: t('billard.onglet_gestion'), icone: <Target className="h-6 w-6" /> }] : []),
         { id: 'caisse', label: t('serveuse.onglet_caisse'), icone: <Wallet className="h-6 w-6" /> },
