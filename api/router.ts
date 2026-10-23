@@ -1,4 +1,4 @@
-import { createRouter, publicQuery } from "./middleware";
+﻿import { createRouter, publicQuery } from "./middleware";
 import { gbsRouter } from "./gbsRouter";
 import { etablissementsRouter } from "./routers/etablissements";
 import { catalogueRouter } from "./routers/catalogue";
@@ -9,6 +9,7 @@ import { comptabiliteRouter } from "./routers/comptabilite";
 import { tauxRouter } from "./routers/taux";
 import { notesRouter } from "./routers/notes";
 import { traiteurRouter } from "./routers/traiteur";
+import { remisesRouter } from "./routers/remises";
 
 export const appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
@@ -22,6 +23,7 @@ export const appRouter = createRouter({
   taux: tauxRouter,
   notes: notesRouter,
   traiteur: traiteurRouter,
+    remises: remisesRouter,
 });
 
 export type AppRouter = typeof appRouter;
