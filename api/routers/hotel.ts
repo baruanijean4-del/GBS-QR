@@ -30,7 +30,6 @@ import { maintenant, uid } from "../gbsUtils";
 /** Rôles habilités à enregistrer et clôturer les séjours (réception). */
 const ROLES_RECEPTION = ["PROPRIETAIRE", "GERANT", "RECEPTIONNISTE"] as const;
 /** Rôles habilités à valider le ménage d'une chambre. */
-const ROLES_MENAGE = ["PROPRIETAIRE", "GERANT", "GOUVERNANTE"] as const;
 
 /** Exige un rôle parmi la liste, sinon refus journalisé. */
 async function exigerRole(acteurId: string, terrasseId: string, attendus: readonly string[], action: string) {
@@ -229,7 +228,7 @@ export const hotelRouter = createRouter({
       const [chambre] = await db().select().from(s.chambres)
         .where(eq(s.chambres.id, input.chambreId)).limit(1);
       if (!chambre) erreur("Chambre introuvable.");
-      const role = await exigerRole(acteurId, chambre.terrasseId, ROLES_MENAGE, "Validation du ménage");
+      const role = await exigerRole(acteurId, chambre.terrasseId, ["RECEPTIONNISTE", "GERANT", "PROPRIETAIRE"], "Validation du ménage");
       if (chambre.statut !== "A_NETTOYER") {
         erreur(`La chambre ${chambre.numero} n'est pas à nettoyer.`);
       }
