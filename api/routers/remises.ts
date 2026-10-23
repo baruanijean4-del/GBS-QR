@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // GBS — Routeur tRPC « remises » : déclaration de caisse
 // Règle : « Là où l'argent disparaît, GBS le voit. »
 // Table existante : remises_caisse (migration 0018)
@@ -102,7 +102,12 @@ export const remisesRouter = createRouter({
 
   // ── 2. Le gérant VALIDE (jamais sa propre déclaration) ────
   valider: protegee
-    .input(z.object({ remiseId: z.string().min(1) }))
+    .input(z.object({
+      remiseId: z.string().min(1),
+      recuCdf: z.number().int().min(0),
+      recuUsd: z.number().int().min(0),
+      motifEcart: z.string().max(200).optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       const acteurId = ctx.session.utilisateurId;
 
@@ -122,12 +127,19 @@ export const remisesRouter = createRouter({
       const le = maintenant();
 
       await db().update(s.remisesCaisse)
-        .set({ statut: "VALIDE", validePar: acteurId, valideLe: le })
+        .set({
+        statut: "VALIDE",
+        validePar: acteurId,
+        valideLe: le,
+        recuCdf: input.recuCdf,
+        recuUsd: input.recuUsd,
+        motifEcart: input.motifEcart ?? remise.motifEcart,
+      })
         .where(eq(s.remisesCaisse.id, input.remiseId));
 
       await journaliser(
         acteurId, role, "REMISE_VALIDEE",
-        `Remise ${input.remiseId} validee. Attendu ${remise.attenduCdf} CDF / Recu ${remise.recuCdf} CDF`,
+        `Remise ${input.remiseId} validee. Attendu ${remise.attenduCdf} CDF / Recu ${input.recuCdf} CDF. Motif ecart : ${input.motifEcart ?? "-"}`,
         { terrasseId: remise.organisationId },
       );
 
