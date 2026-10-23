@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // GBS — Routeur tRPC « remises » : déclaration de caisse
 // Règle : « Là où l'argent disparaît, GBS le voit. »
 // Table existante : remises_caisse (migration 0018)
@@ -21,7 +21,7 @@ export const remisesRouter = createRouter({
   // ── 1. Le réceptionniste DÉCLARE sa caisse ────────────────
   declarer: protegee
     .input(z.object({
-      terrasseId: z.string().length(40),
+      terrasseId: z.string().min(1),
       attenduCdf: z.number().int().min(0),
       attenduUsd: z.number().int().min(0),
       recuCdf: z.number().int().min(0),
@@ -91,7 +91,7 @@ export const remisesRouter = createRouter({
 
   // ── 2. Le gérant VALIDE (jamais sa propre déclaration) ────
   valider: protegee
-    .input(z.object({ remiseId: z.string().length(40) }))
+    .input(z.object({ remiseId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const acteurId = ctx.session.utilisateurId;
 
@@ -126,7 +126,7 @@ export const remisesRouter = createRouter({
   // ── 3. Le gérant CONTESTE ─────────────────────────────────
   contester: protegee
     .input(z.object({
-      remiseId: z.string().length(40),
+      remiseId: z.string().min(1),
       motifContest: z.string().min(5).max(200),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -168,7 +168,7 @@ export const remisesRouter = createRouter({
 
   // ── 4. Le gérant LISTE les déclarations en attente ────────
   listerEnAttente: protegee
-    .input(z.object({ terrasseId: z.string().length(40) }))
+    .input(z.object({ terrasseId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const acteurId = ctx.session.utilisateurId;
       await exigerPermission(acteurId, input.terrasseId, "VALIDER_CAISSE");
