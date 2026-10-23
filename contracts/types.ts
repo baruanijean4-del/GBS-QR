@@ -32,6 +32,8 @@ export type RoleActif = "PROPRIETAIRE" | "CLIENT" | "SUPER_ADMIN" | RoleEtabliss
  *  établissement, avant/après). */
 export type ActionSensible =
   | "VOIR_RAPPORTS"        // rapports et caisse consolidée
+  | "DECLARER_CAISSE"      // déclarer sa caisse en fin de shift
+  | "VALIDER_CAISSE"       // valider/contester une déclaration de caisse
   | "MODIFIER_PRIX"        // prix / tarifs
   | "REMISE"               // remise dans la limite du seuil du rôle
   | "REMISE_HORS_SEUIL"    // remise au-delà du seuil (approbation)

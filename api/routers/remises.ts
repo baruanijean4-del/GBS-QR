@@ -11,7 +11,7 @@ import { z } from "zod";
 import * as s from "@db/schema";
 import { createRouter, protegee } from "../middleware";
 import { alerter, db, erreur, journaliser } from "../gbsRouter";
-import { exigerPermission } from "../lib/permissions";
+import { exigerRole } from "../lib/permissions";
 import { maintenant, uid } from "../gbsUtils";
 
 const SEUIL_CDF_DEFAUT = 5000;
@@ -30,7 +30,7 @@ export const remisesRouter = createRouter({
     }))
     .mutation(async ({ ctx, input }) => {
       const acteurId = ctx.session.utilisateurId;
-      const role = await exigerPermission(acteurId, input.terrasseId, "DECLARER_CAISSE");
+      const role = await exigerRole(acteurId, input.terrasseId, ["RECEPTIONNISTE", "GERANT", "PROPRIETAIRE"], "Déclaration de caisse");
 
       const ecartCdf = input.recuCdf - input.attenduCdf;
       const ecartUsd = input.recuUsd - input.attenduUsd;
@@ -107,7 +107,7 @@ export const remisesRouter = createRouter({
         erreur("Auto-validation interdite : un gerant ne valide pas sa propre declaration.");
       }
 
-      const role = await exigerPermission(acteurId, remise.organisationId, "VALIDER_CAISSE");
+      const role = await exigerRole(acteurId, remise.organisationId, ["GERANT", "PROPRIETAIRE"], "Validation de la caisse");
       const le = maintenant();
 
       await db().update(s.remisesCaisse)
@@ -140,7 +140,7 @@ export const remisesRouter = createRouter({
 
       if (!remise) erreur("Remise introuvable.");
 
-      const role = await exigerPermission(acteurId, remise.organisationId, "VALIDER_CAISSE");
+      const role = await exigerRole(acteurId, remise.organisationId, ["GERANT", "PROPRIETAIRE"], "Validation de la caisse");
       const le = maintenant();
 
       await db().update(s.remisesCaisse)
@@ -171,7 +171,7 @@ export const remisesRouter = createRouter({
     .input(z.object({ terrasseId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const acteurId = ctx.session.utilisateurId;
-      await exigerPermission(acteurId, input.terrasseId, "VALIDER_CAISSE");
+      await exigerRole(acteurId, input.terrasseId, ["GERANT", "PROPRIETAIRE"], "Consultation des remises en attente");
 
       const lignes = await db()
         .select()
