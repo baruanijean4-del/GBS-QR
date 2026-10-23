@@ -938,4 +938,26 @@ export const billardRouter = createRouter({
           .sort((a, b) => a.heure - b.heure),
       };
     }),
+
+  /** Classement public des 10 meilleurs joueurs (par série de victoires). */
+  classementJoueurs: publicQuery
+    .input(z.object({ terrasseId: z.string() }))
+    .query(async ({ input }) => {
+      const joueurs = await db().select({
+        id: s.tokensBillard.id,
+          prenom: s.tokensBillard.prenom,
+          numero: s.tokensBillard.numero,
+        serie: s.tokensBillard.serie,
+        statut: s.tokensBillard.statut,
+      }).from(s.tokensBillard)
+        .where(eq(s.tokensBillard.terrasseId, input.terrasseId))
+        .orderBy(desc(s.tokensBillard.serie))
+        .limit(10);
+      
+      return joueurs.map((j, index) => ({
+        ...j,
+        rang: index + 1,
+        estChampion: j.statut === 'VINCAIRE' || j.statut === 'ROI',
+      }));
+    }),
 });
