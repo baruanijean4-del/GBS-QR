@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // GBS — Hôtel / chambres (prompt maître §4 et §7) : réception.
 // Cycle d'occupation : LIBRE →(checkIn) OCCUPEE →(checkOut)
 // A_NETTOYER →(marquerNettoyee, gouvernante) LIBRE.
@@ -20,7 +20,7 @@ import { z } from "zod";
 import * as s from "@db/schema";
 import { montantSejourCdf, type ModeSejour } from "@contracts/hotel";
 import { createRouter, protegee, publicQuery } from "../middleware";
-import { ajouterLignesNoteDb, finaliserLigneSejourDb, ouvrirNoteSejourDb } from "./notes";
+import { ajouterLignesNoteDb, encaisserNoteDb, finaliserLigneSejourDb, ouvrirNoteSejourDb, sommesNoteDb } from "./notes";
 import { enregistrerPhotoChambre } from "../services/storage";
 import {
   db, erreur, exigerGerantOuProprio, journaliser, resoudreTableParToken, rolesSurDb, tauxCourantDb,
@@ -213,6 +213,26 @@ export const hotelRouter = createRouter({
         // définitif (unités entamées, min 1).
         await finaliserLigneSejourDb(sejour.id, montant,
           `Chambre ${chambre.numero} — ${sejour.mode === "NUIT" ? "nuitée(s)" : "heure(s)"}`);
+        // ENCAISSEMENT AUTOMATIQUE : l'argent du sejour entre dans la caisse
+        // Regle GBS : « La ou l'argent disparait, GBS le voit. »
+        const [noteSejour] = await db().select({ id: s.notes.id }).from(s.notes)
+          .where(eq(s.notes.sejourId, sejour.id)).limit(1);
+        if (noteSejour) {
+          const { resteCdf, resteUsd } = await sommesNoteDb(noteSejour.id);
+          if (resteCdf > 0 || resteUsd > 0) {
+            await encaisserNoteDb({
+              noteId: noteSejour.id,
+              acteurId: acteurId,
+              montantCdf: resteCdf,
+              montantUsd: resteUsd,
+              mode: "CASH",
+            });
+            await journaliser(acteurId, role, "ENCAISSEMENT_AUTO",
+              `Check-out chambre ${chambre.numero} : ${resteCdf} FC encaisses automatiquement`,
+              { terrasseId: sejour.terrasseId });
+          }
+        }
+
         return { ok: true as const, montantTotalCdf: montant };
       });
     }),
