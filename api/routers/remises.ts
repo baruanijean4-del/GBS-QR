@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // GBS — Routeur tRPC « remises » : déclaration de caisse
 // Règle : « Là où l'argent disparaît, GBS le voit. »
 // Table existante : remises_caisse (migration 0018)
@@ -41,7 +41,7 @@ export const remisesRouter = createRouter({
     }))
     .mutation(async ({ ctx, input }) => {
       const acteurId = ctx.session.utilisateurId;
-      const role = await exigerRole(acteurId, input.terrasseId, ["RECEPTIONNISTE", "GERANT", "PROPRIETAIRE"], "Déclaration de caisse");
+        const role = await exigerRole(acteurId, input.terrasseId, ["RECEPTIONNISTE", "SERVEUSE", "VENDEUR", "PHARMACIEN"], "Déclaration de caisse");
 
       const ecartCdf = input.recuCdf - input.attenduCdf;
       const ecartUsd = input.recuUsd - input.attenduUsd;
