@@ -59,10 +59,12 @@ function EspaceServeuse({ moi, terrasse }: { moi: Utilisateur; terrasse: Terrass
 
   // Polling des nouvelles commandes (toutes les 10 secondes)
   const [nbNouvelles, setNbNouvelles] = useState(0)
+  const [sonActive, setSonActive] = useState(false)
 
   useEffect(() => {
     // On crée un audio "ding" via l'API Web Audio
     const creerDing = () => {
+      if (!sonActive) return
       try {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
         const osc = ctx.createOscillator()
@@ -101,7 +103,27 @@ function EspaceServeuse({ moi, terrasse }: { moi: Utilisateur; terrasse: Terrass
     <CoquilleRole
       titre={terrasse.nom}
       sousTitre={`${moi.nom} — ${t('role.serveuse')}`}
-      droite={<BoutonDeconnexion />}
+      droite={
+        <div className="flex items-center gap-2">
+          {!sonActive && (
+            <button
+              onClick={() => {
+                setSonActive(true)
+                // On crée un AudioContext pour débloquer l'audio
+                try {
+                  const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+                  ctx.resume()
+                } catch { /* silencieux */ }
+                toast.success('Son activé !')
+              }}
+              className="rounded-full bg-ambre/20 px-3 py-1.5 text-xs font-bold text-ambre"
+            >
+              🔔 Activer le son
+            </button>
+          )}
+          <BoutonDeconnexion />
+        </div>
+      }
       actif={onglet}
       onChange={setOnglet}
       onglets={[
