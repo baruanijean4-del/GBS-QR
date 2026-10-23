@@ -586,6 +586,32 @@ export function enregistrerDepense(terrasseId: string, montantCdf: number, monta
  * Solde de la boutique = argent encaissé (commandes payées)
  * − dépôts validés (cash sorti de la caisse) − dépenses.
  */
+
+/** Déclaration de caisse par le réceptionniste (fin de shift).
+ *  Le solde attendu est calculé côté serveur (somme encaissements − dépôts − dépenses).
+ *  Un écart non nul exige un motif. Chaque déclaration est auditée + alerte gérant si écart. */
+export function declarerCaisse(
+  terrasseId: string,
+  attenduCdf: number,
+  attenduUsdCentimes: number,
+  recuCdf: number,
+  recuUsdCentimes: number,
+  motifEcart?: string,
+) {
+  return exec(api.remises.declarer.mutate({
+    terrasseId, attenduCdf, attenduUsdCentimes, recuCdf, recuUsdCentimes, motifEcart,
+  }))
+}
+
+/** Liste les déclarations de caisse en attente pour un établissement (vue gérant). */
+export function listerRemisesEnAttente(terrasseId: string) {
+  return exec(api.remises.listerEnAttente.query({ terrasseId }))
+}
+
+/** Liste les déclarations de caisse du réceptionniste connecté (vue personnel). */
+export function listerMesDeclarations(limite = 30) {
+  return exec(api.remises.listerMesDeclarations.query({ limite }))
+}
 export function soldeBoutique(db: DB, terrasseId: string): { cdf: number; usdCentimes: number } {
   let cdf = 0
   let usd = 0

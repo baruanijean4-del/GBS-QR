@@ -4,13 +4,16 @@
 // Table existante : remises_caisse (migration 0018)
 // ============================================================
 
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import * as s from "@db/schema";
 import { createRouter, protegee } from "../middleware";
 import { alerter, db, erreur, journaliser } from "../gbsRouter";
 import { exigerPermission } from "../lib/permissions";
 import { maintenant, uid } from "../gbsUtils";
+
+const SEUIL_CDF_DEFAUT = 5000;
+const SEUIL_USD_DEFAUT = 200;
 
 export const remisesRouter = createRouter({
   // ── 1. Le réceptionniste DÉCLARE sa caisse ────────────────
@@ -62,9 +65,20 @@ export const remisesRouter = createRouter({
       );
 
       if (aEcart) {
+        const [seuils] = await db()
+          .select({ cdf: s.terrasses.seuilEcartCdf, usd: s.terrasses.seuilEcartUsd })
+          .from(s.terrasses)
+          .where(eq(s.terrasses.organisationId, input.organisationId))
+          .limit(1);
+
+        const seuilCdf = seuils?.cdf ?? SEUIL_CDF_DEFAUT;
+        const seuilUsd = seuils?.usd ?? SEUIL_USD_DEFAUT;
+        const critique = Math.abs(ecartCdf) > seuilCdf || Math.abs(ecartUsd) > seuilUsd;
+
         await alerter(
-          input.organisationId, "ECART_CAISSE",
-          `Ecart de ${ecartCdf} CDF / ${ecartUsd} cent. USD. Motif : ${input.motifEcart ?? "-"}`,
+          input.organisationId,
+          critique ? "ECART_CAISSE_CRITIQUE" : "ECART_CAISSE",
+          `Ecart ${critique ? "CRITIQUE" : ""} de ${ecartCdf} CDF / ${ecartUsd} cent. USD (seuils : ${seuilCdf}/${seuilUsd}). Motif : ${input.motifEcart ?? "-"}`,
         );
       }
 
@@ -146,5 +160,41 @@ export const remisesRouter = createRouter({
       );
 
       return { ok: true };
+    }),
+
+  // ── 4. Le gérant LISTE les déclarations en attente ────────
+  listerEnAttente: protegee
+    .input(z.object({ organisationId: z.string().length(40) }))
+    .query(async ({ ctx, input }) => {
+      const acteurId = ctx.session.utilisateurId;
+      await exigerPermission(acteurId, input.organisationId, "VALIDER_CAISSE");
+
+      const lignes = await db()
+        .select()
+        .from(s.remisesCaisse)
+        .where(and(
+          eq(s.remisesCaisse.organisationId, input.organisationId),
+          eq(s.remisesCaisse.statut, "EN_ATTENTE"),
+        ))
+        .orderBy(desc(s.remisesCaisse.creeLe))
+        .limit(100);
+
+      return lignes;
+    }),
+
+  // ── 5. Le réceptionniste LISTE ses propres déclarations ───
+  listerMesDeclarations: protegee
+    .input(z.object({ limite: z.number().int().min(1).max(100).default(30) }))
+    .query(async ({ ctx, input }) => {
+      const acteurId = ctx.session.utilisateurId;
+
+      const lignes = await db()
+        .select()
+        .from(s.remisesCaisse)
+        .where(eq(s.remisesCaisse.employeId, acteurId))
+        .orderBy(desc(s.remisesCaisse.creeLe))
+        .limit(input.limite);
+
+      return lignes;
     }),
 });

@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // GBS — Bloc caisse : solde de la boutique + dépenses du jour
 // Partagé entre le Pilotage du Propriétaire et le Tableau du
 // Gérant. Le solde = ventes encaissées − dépôts validés −
@@ -11,7 +11,7 @@ import { MinusCircle, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { Carte, Feuille, GrosBouton, Money, SaisieNombre, classeSaisie } from './gbs'
 import { fmtCDF, fmtUSD, heureLubu } from '@/lib/format'
-import { depensesDuJour, enregistrerDepense, soldeBoutique, useDB, utilisateurDe } from '@/lib/store'
+import { depensesDuJour, enregistrerDepense, soldeBoutique, useDB, utilisateurDe, declarerCaisse } from '@/lib/store'
 import { useT } from '@/i18n'
 
 export function BlocCaisse({ terrasseId }: { terrasseId: string }) {
@@ -93,6 +93,7 @@ export function BlocCaisse({ terrasseId }: { terrasseId: string }) {
           </div>
         )}
       </Carte>
+        <DeclarerCaisse terrasseId={terrasseId} />
 
       <Feuille ouvert={feuille} surFermer={() => setFeuille(false)} titre={t('caisse.titre_feuille')}>
         <div className="flex flex-col gap-4">
@@ -116,5 +117,102 @@ export function BlocCaisse({ terrasseId }: { terrasseId: string }) {
         </div>
       </Feuille>
     </>
+  )
+}
+
+// ============================================================
+// Déclaration de caisse (réceptionniste) — bloc ajouté sous le solde
+// Règle GBS : « Là où l'argent disparaît, GBS le voit. »
+// ============================================================
+export function DeclarerCaisse({ terrasseId }: { terrasseId: string }) {
+  const db = useDB()
+  const t = useT()
+  const solde = soldeBoutique(db, terrasseId)
+  const [ouvert, setOuvert] = useState(false)
+  const [recuCdf, setRecuCdf] = useState(String(solde.cdf))
+  const [recuUsd, setRecuUsd] = useState((solde.usdCentimes / 100).toFixed(2))
+  const [motif, setMotif] = useState('')
+  const [chargement, setChargement] = useState(false)
+  const [fait, setFait] = useState(false)
+
+  const recuCdfNum = parseInt(recuCdf) || 0
+  const recuUsdNum = Math.round((parseFloat(recuUsd.replace(',', '.')) || 0) * 100)
+  const ecartCdf = recuCdfNum - solde.cdf
+  const ecartUsd = recuUsdNum - solde.usdCentimes
+  const aEcart = ecartCdf !== 0 || ecartUsd !== 0
+
+  const declarer = async () => {
+    if (chargement) return
+    if (aEcart && motif.trim().length < 3) {
+      toast.error(t('caisse.motif_ecart'))
+      return
+    }
+    setChargement(true)
+    try {
+      await declarerCaisse(terrasseId, solde.cdf, solde.usdCentimes, recuCdfNum, recuUsdNum, aEcart ? motif.trim() : undefined)
+      toast.success(t('caisse.en_attente_validation'))
+      setFait(true)
+      setOuvert(false)
+      setMotif('')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('commun.erreur'))
+    } finally {
+      setChargement(false)
+    }
+  }
+
+  return (
+    <Carte>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-widest text-sable/50">{t('caisse.declarer_titre')}</p>
+          <p className="mt-1 text-xs text-sable/60">
+            {t('caisse.attendu')} : <Money cdf={solde.cdf} usd={solde.usdCentimes} />
+          </p>
+        </div>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ambre/15">
+          <Wallet className="h-5 w-5 text-ambre" />
+        </div>
+      </div>
+
+      {fait ? (
+        <p className="mt-3 text-sm text-succes-clair">✓ {t('caisse.en_attente_validation')}</p>
+      ) : !ouvert ? (
+        <div className="mt-3">
+          <GrosBouton petit onClick={() => setOuvert(true)}>
+            {t('caisse.declarer')}
+          </GrosBouton>
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <SaisieNombre valeur={recuCdf} onChange={setRecuCdf} placeholder={t('caisse.recu_cdf')} />
+            <input
+              className={`${classeSaisie} font-mono`}
+              inputMode="decimal"
+              value={recuUsd}
+              onChange={(e) => setRecuUsd(e.target.value)}
+              placeholder={t('caisse.recu_usd')}
+            />
+          </div>
+          {aEcart && (
+            <>
+              <p className="text-sm font-semibold text-ambre">
+                {t('caisse.ecart')} : {ecartCdf > 0 ? '+' : ''}{fmtCDF(ecartCdf)} / {ecartUsd > 0 ? '+' : ''}{fmtUSD(ecartUsd)}
+              </p>
+              <input className={classeSaisie} value={motif} onChange={(e) => setMotif(e.target.value)} placeholder={t('caisse.motif_ecart')} />
+            </>
+          )}
+          <div className="flex gap-2">
+            <GrosBouton petit ton="secondaire" onClick={() => setOuvert(false)}>
+              {t('commun.annuler')}
+            </GrosBouton>
+            <GrosBouton petit charge={chargement} onClick={() => void declarer()} desactive={aEcart && motif.trim().length < 3}>
+              {t('caisse.declarer')}
+            </GrosBouton>
+          </div>
+        </div>
+      )}
+    </Carte>
   )
 }
