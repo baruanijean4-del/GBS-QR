@@ -21,6 +21,7 @@ import { LogoGBS } from './Home'
 import { OngletMaNote } from './MaNote'
 import { OngletBillardClient } from './Billard'
 import { OngletChambres } from './Chambres'
+import { OngletClassement } from './Classement'
 import { FournisseurPortee, annulerMaCommande, contexteTable, ecriturePermise, noterServeuse,
   ouvrirSessionClient, passerCommande, serveuseDeTable, useDB, useDBPret, utilisateurDe, prolongerSejour } from '@/lib/store'
 import type { Commande, LigneCommande, Portee, Produit } from '@/lib/types'
@@ -337,6 +338,8 @@ function VueClientInterne({ token, client, setClient }: {
 
       {onglet === 'billard' ? (
         <BlocBoundary><OngletBillardClient token={token} sessionId={client.sessionId} /></BlocBoundary>
+      ) : onglet === 'classement' ? (
+        <BlocBoundary><OngletClassement /></BlocBoundary>
       ) : onglet === 'chambres' ? (
         <BlocBoundary><OngletChambres token={token} clientSessionId={client.sessionId} terrasseId={terrasse.id} /></BlocBoundary>
       ) : onglet === 'chambre' ? (
