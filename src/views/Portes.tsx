@@ -328,8 +328,8 @@ export function Connexion() {
       // chef et magasinier → cuisine/traiteur, MODULE-TRAITEUR §9)
       if (r.roles.includes('PROPRIETAIRE')) naviguer('/p')
       else if (r.roles.includes('GERANT')) naviguer('/g')
-      else if (r.roles.includes('RECEPTIONNISTE') || r.roles.includes('GOUVERNANTE')) naviguer('/h')
-      else if (r.roles.includes('CHEF') || r.roles.includes('MAGASINIER')) naviguer('/cuisine')
+      else if (r.roles.includes('RECEPTIONNISTE')) naviguer('/h')
+      else if (r.roles.includes('CHEF')) naviguer('/cuisine')
       else naviguer('/s')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('commun.erreur'))
