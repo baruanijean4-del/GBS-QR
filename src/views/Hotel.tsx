@@ -359,24 +359,14 @@ function FeuilleCreation({ terrasseId, surFermer, surFait }: {
         <label className="text-xs font-bold uppercase tracking-widest text-sable/50">{t('hotel.prix_heure')}</label>
         <SaisieNombre valeur={prixHeure} onChange={setPrixHeure} placeholder={t('hotel.prix_heure_ph')} />
         <label className="text-xs font-bold uppercase tracking-widest text-sable/50">URL de la photo</label>
-        <label className="text-xs font-bold uppercase tracking-widest text-sable/50">Photo de la chambre</label>
         <input
-          type="file"
-          accept="image/*"
           className={classeSaisie}
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (!file) return
-            const reader = new FileReader()
-            reader.onload = () => {
-              const base64 = (reader.result as string).split(',')[1]
-              setPhotoUrl(base64)
-            }
-            reader.readAsDataURL(file)
-          }}
+          value={photoUrl}
+          onChange={(e) => setPhotoUrl(e.target.value)}
+          placeholder="https://example.com/photo.jpg"
         />
-        {photoUrl && (
-          <img src={photoUrl.startsWith('data:') ? photoUrl : `data:image/jpeg;base64,${photoUrl}`} alt="Chambre" className="h-32 w-full rounded-xl object-cover" />
+        {photoUrl && !photoUrl.startsWith('data:') && (
+          <img src={photoUrl} alt="Chambre" className="h-32 w-full rounded-xl object-cover" />
         )}
         <GrosBouton
           charge={charge}
@@ -386,7 +376,7 @@ function FeuilleCreation({ terrasseId, surFermer, surFait }: {
             setCharge(true)
             void (async () => {
               try {
-                await creerChambreHotel({ terrasseId, numero: numero.trim(), type, prixNuitCdf: prixN, prixHeureCdf: prixH })
+                await creerChambreHotel({ terrasseId, numero: numero.trim(), type, prixNuitCdf: prixN, prixHeureCdf: prixH, photoUrl: photoUrl.trim() || null })
                 toast.success(t('hotel.chambre_creee', { n: numero.trim() }))
                 surFait()
               } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
