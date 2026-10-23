@@ -1292,7 +1292,7 @@ function FeuilleAjout({ terrasseId, surFermer }: { terrasseId: string; surFermer
         variante: variante || undefined,
         consignable,
         bouteillesParCasier: casier,
-        photoUrl: photoScan ?? undefined,
+        photoUrl: photoScan && (photoScan.startsWith("http") || photoScan.startsWith("/uploads/")) ? photoScan : undefined,
         typeProduit,
         unite: unite.trim() || undefined,
         capacite: typeProduit === 'CHAMBRE' ? parseInt(capacite) : undefined,
