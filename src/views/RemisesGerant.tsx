@@ -13,6 +13,7 @@ import { fmtCDF, fmtUSD, ilYA } from '@/lib/format'
 import {
   useDB, validerRemiseNote, utilisateurDe,
   declarerCaisse, listerRemisesEnAttente, validerCaisse, contesterCaisse,
+  ouEstLArgent,
 } from '@/lib/store'
 import { useT } from '@/i18n'
 import { trpc } from '@/providers/trpc'
@@ -58,6 +59,44 @@ export function PanneauRemisesGerant({ terrasseId }: { terrasseId: string }) {
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-4">
+      {/* ---------- OÙ EST L'ARGENT ? (vue Gérant) ---------- */}
+      {(() => {
+        const etat = ouEstLArgent(db, terrasseId)
+        const totalCash = etat.cashParEmploye.reduce((s, e) => s + e.cdf, 0)
+        return (
+          <Carte classe="border-ambre/30">
+            <p className="mb-2 flex items-center gap-2 font-bold text-white">
+              <Coins className="h-5 w-5 text-ambre" /> Où est l'argent ?
+            </p>
+            {etat.cashParEmploye.length > 0 ? (
+              <>
+                <p className="text-xs text-sable/60 mb-1">Cash en main (non remis)</p>
+                {etat.cashParEmploye.map((e) => (
+                  <div key={e.nom} className="flex justify-between text-sm py-0.5">
+                    <span className="text-white">{e.nom}</span>
+                    <span className="font-mono font-bold text-ambre">{fmtCDF(e.cdf)}</span>
+                  </div>
+                ))}
+                <p className="mt-1 text-xs text-sable/50">Total : <b>{fmtCDF(totalCash)}</b></p>
+              </>
+            ) : (
+              <p className="text-xs text-sable/60">Aucun cash en main.</p>
+            )}
+            {etat.declarationsEnAttente > 0 && (
+              <p className="mt-2 text-sm text-ambre">
+                <b>{etat.declarationsEnAttente}</b> déclaration(s) en attente de validation.
+              </p>
+            )}
+            {etat.notesImpayees.nb > 0 && (
+              <p className="mt-1 text-sm text-danger-clair">
+                <b>{etat.notesImpayees.nb}</b> note(s) impayée(s) : {fmtCDF(etat.notesImpayees.cdf)}
+                {etat.notesImpayees.usd > 0 ? ` + ${fmtUSD(etat.notesImpayees.usd)}` : ''}
+              </p>
+            )}
+          </Carte>
+        )
+      })()}
+
       {/* ---------- SECTION 1 : Déclarations de caisse (remises.ts) ---------- */}
       <p className="text-xs font-bold uppercase tracking-widest text-sable/50">{t('note.remises_caisse_titre')}</p>
       {remisesCaisse.data.length === 0 ? (

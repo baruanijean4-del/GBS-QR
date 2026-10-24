@@ -1069,3 +1069,38 @@ export function cleSoldeSelonType(type: string | undefined | null): string {
   if (t === 'quincaillerie') return 'caisse.solde_quincaillerie';
   return 'caisse.solde_terrasse';
 }
+
+/** Vue « Où est l'argent ? » : agrège le cash en main de chaque employé,
+ *  les déclarations en attente et les notes impayées.
+ *  Règle GBS : « Là où l'argent disparaît, GBS le voit. » */
+export function ouEstLArgent(db: DB, terrasseId: string) {
+  const cashParEmploye: Record<string, { nom: string; role: string; cdf: number; usd: number }> = {};
+  for (const e of (db.encaissements ?? [])) {
+    if (e.terrasseId !== terrasseId || e.statut !== 'EN_MAIN') continue;
+    const u = utilisateurDe(db, e.encaisseParId);
+    if (!u) continue;
+    if (!cashParEmploye[u.id]) {
+      cashParEmploye[u.id] = { nom: u.nom, role: 'Employé', cdf: 0, usd: 0 };
+    }
+    cashParEmploye[u.id].cdf += e.montantCdf;
+    cashParEmploye[u.id].usd += e.montantUsd;
+  }
+
+  const declarationsEnAttente = (db.remisesCaisse ?? []).filter(
+    (r) => r.terrasseId === terrasseId && r.statut === 'EN_ATTENTE'
+  ).length + (db.depots ?? []).filter(
+    (d) => d.terrasseId === terrasseId && d.statut === 'DECLARE'
+  ).length;
+
+  const notesImpayees = db.commandes.filter(
+    (c) => c.terrasseId === terrasseId && c.statut === 'SERVIE' && !c.payeeLe
+  );
+  const notesImpayeesCdf = notesImpayees.reduce((t, c) => t + c.totalCdf, 0);
+  const notesImpayeesUsd = notesImpayees.reduce((t, c) => t + c.totalUsdCentimes, 0);
+
+  return {
+    cashParEmploye: Object.values(cashParEmploye).sort((a, b) => b.cdf - a.cdf),
+    declarationsEnAttente,
+    notesImpayees: { nb: notesImpayees.length, cdf: notesImpayeesCdf, usd: notesImpayeesUsd },
+  };
+}
