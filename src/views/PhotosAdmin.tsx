@@ -119,8 +119,3 @@ export function PhotosAdmin({ pin }: { pin: string }) {
   )
 }
 
-/** Nombre de demandes en attente (pastille de l'onglet) */
-export function useNbDemandesPhoto(pin: string): number {
-  const demandes = trpc.photos.listerAdmin.useQuery({ pinAdmin: pin }, { refetchInterval: 15000, retry: false })
-  return demandes.data?.length ?? 0
-}

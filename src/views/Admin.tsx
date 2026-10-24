@@ -20,7 +20,7 @@ import {
 } from '@/lib/store'
 import type { PlanCode, Portee, Tranche } from '@/lib/types'
 import { CLE_PIN_ADMIN } from '@/lib/constantes'
-import { PhotosAdmin, useNbDemandesPhoto } from './PhotosAdmin'
+import { PhotosAdmin } from './PhotosAdmin'
 
 export function VueAdmin() {
   const [pin, setPin] = useState(() => sessionStorage.getItem(CLE_PIN_ADMIN) ?? '')
@@ -68,7 +68,8 @@ function VueAdminInterne({ pin }: { pin: string }) {
   const db = useDB()
   const pret = useDBPret()
   const [onglet, setOnglet] = useState<'paiements' | 'photos' | 'terrasses' | 'abonnes' | 'tarifs' | 'erreurs' | 'pin'>('paiements')
-  const nbDemandesPhoto = useNbDemandesPhoto(pin)
+  // Pastille de l'onglet Photos (même requête que le panneau : une seule en mémoire)
+  const nbDemandesPhoto = trpc.photos.listerAdmin.useQuery({ pinAdmin: pin }, { refetchInterval: 15000, retry: false }).data?.length ?? 0
   const [delai, setDelai] = useState(false)
   const [pdfEnCours, setPdfEnCours] = useState(false)
   useEffect(() => {
