@@ -889,6 +889,7 @@ export interface DB {
   /** Encaissements (argent physique en caisse — hôtel, notes) */
   encaissements: Array<{
     id: string; terrasseId: string;
+    encaisseParId: string;
     montantCdf: number; montantUsd: number;
     mode: string; statut: string; creeLe: string;
   }>;

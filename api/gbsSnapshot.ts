@@ -167,7 +167,8 @@ export async function chargerTout(): Promise<DB> {
       creeLe: d.creeLe,
     })),
     encaissements: encaissements.map((e) => ({
-      id: e.id, terrasseId: e.organisationId, // mapping legacy DB→client
+      id: e.id, terrasseId: e.organisationId,
+      encaisseParId: e.encaisseParId,
       montantCdf: e.montantCdf, montantUsd: e.montantUsd,
       mode: e.mode, statut: e.statut, creeLe: e.creeLe,
     })),
