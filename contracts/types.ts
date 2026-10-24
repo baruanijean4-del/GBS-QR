@@ -756,6 +756,7 @@ export interface Alerte {
     | "TAUX_VARIATION" | "TAUX_FREQUENCE"
     // Note unique (ANNEXE-2 §6) et prise en charge (ANNEXE-3 §3)
     | "ADDITION_DEMANDEE" | "NOTE_LITIGE" | "ECART_REMISE"
+    | "ECART_CAISSE_CRITIQUE" | "REMISE_CONTESTEE"
     | "PRISE_EN_CHARGE" | "PRISE_EN_CHARGE_EXPIREE" | "PRISE_EN_CHARGE_ABUS"
     // Traiteur (MODULE-TRAITEUR §7bis) : écart d'inventaire détecté
     // lors d'un comptage à l'aveugle — message en QUANTITÉ seule.
@@ -887,20 +888,42 @@ export interface DB {
   /** Catalogue de démarrage global (photos génériques), importable par établissement */
   catalogueProduits: ProduitCatalogue[];
   /** Encaissements (argent physique en caisse — hôtel, notes) */
-  encaissements: Array<{
+  encaissements?: Array<{
     id: string; terrasseId: string;
     encaisseParId: string;
     montantCdf: number; montantUsd: number;
     mode: string; statut: string; creeLe: string;
   }>;
   /** Remises de caisse (déclarations réceptionniste/serveuse) */
-  remisesCaisse: Array<{
+  remisesCaisse?: Array<{
     id: string; terrasseId: string;
     employeId: string;
     attenduCdf: number; attenduUsd: number;
     recuCdf: number; recuUsd: number;
     statut: string; motifEcart: string | null;
     creeLe: string;
+  }>;
+  /** Module Hôtel + notes (chargés dans le snapshot staff ; absents des portées client/public). */
+  chambres?: Array<{
+    id: string; terrasseId: string; numero: string; type: string; statut: string;
+    prixNuitCdf: number; prixHeureCdf: number | null; photoUrl: string | null; creeLe: string;
+  }>;
+  sejours?: Array<{
+    id: string; chambreId: string; terrasseId: string; clientNom: string;
+    pieceIdentite: string | null; mode: string; arriveeLe: string; departLe: string | null;
+    montantTotalCdf: number | null; statut: string; tauxUsdCdf: number | null;
+    creePar: string; creeLe: string;
+  }>;
+  notes?: Array<{
+    id: string; organisationId: string; clientId: string; sejourId: string | null;
+    statut: string; ouverteLe: string; regleeLe: string | null; tauxUsdCdf: number | null;
+    motifLitige: string | null; litigeLe: string | null; litigeDeclarePar: string | null;
+  }>;
+  noteLignes?: Array<{
+    id: string; noteId: string; terrasseId: string; espace: string; type: string;
+    refId: string | null; libelle: string; quantite: number; montantCdf: number;
+    montantUsd: number; tauxUsdCdf: number | null; statut: string; creeParId: string | null;
+    creeLe: string; annuleLe: string | null; annulePar: string | null; motifAnnulation: string | null;
   }>;
   compteurFacture: number;
 }
