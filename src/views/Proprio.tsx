@@ -422,7 +422,7 @@ function Pilotage({ terrasse, acteurId, mesTerrasses, moi }: { terrasse: Terrass
       </Carte>
 
       {/* Solde de la boutique + dépenses du jour (caisse) */}
-            <BlocCaisse terrasseId={terrasse.id} typeEtablissement={terrasse.type} />
+            <BlocCaisse terrasseId={terrasse.id} afficherDeclaration={false} typeEtablissement={terrasse.type} />
 
       {/* Chiffre d'affaires cumulé (toutes dates) */}
       <Carte>

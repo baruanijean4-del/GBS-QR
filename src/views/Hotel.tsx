@@ -442,7 +442,7 @@ function EspaceHotel({ moi, terrasse }: { moi: Utilisateur; terrasse: Terrasse }
       ]}
     >
       {onglet === 'chambres' && <PanneauHotel terrasseId={terrasse.id} mode="reception" />}
-      {onglet === 'caisse' && <BlocCaisse terrasseId={terrasse.id} />}
+        {onglet === 'caisse' && <BlocCaisse terrasseId={terrasse.id} afficherDeclaration={false} typeEtablissement={terrasse.type} />}
       {onglet === 'menage' && <PanneauHotel terrasseId={terrasse.id} mode="menage" />}
     </CoquilleRole>
   )
