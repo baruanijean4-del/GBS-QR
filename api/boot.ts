@@ -2,11 +2,11 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { compress } from "hono/compress";
 import { secureHeaders } from "hono/secure-headers";
-import { createHash } from "node:crypto";
 import type { HttpBindings } from "@hono/node-server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./router";
 import { createContext } from "./context";
+import { etagSnapshot } from "./lib/etagSnapshot";
 import { env } from "./lib/env";
 import { capturerErreur, initMonitoring } from "./lib/monitoring";
 import { enregistrerErreurClient, erreurPermise, schemaErreurClient } from "./lib/erreursClient";
@@ -55,28 +55,10 @@ app.use("*", secureHeaders({
 // gzip est négocié automatiquement à la place.
 app.use("*", compress());
 
-// ETag sur les snapshots : le snapshot poll toutes les 4 s par écran ;
-// quand rien n'a changé, on répond 304 Not Modified au lieu de renvoyer
-// tout le JSON (le catalogue ~1000 produits part à chaque fois sinon).
-// Le hash est calculé sur le JSON brut (avant gzip) : il est stable
-// quel que soit l'encodage négocié. Le client (src/lib/fetchEtag.ts)
-// renvoie If-None-Match et rejoue sa dernière réponse sur un 304.
+// ETag sur les snapshots (304 si rien n'a changé) — voir api/lib/etagSnapshot.ts.
 // Seule la requête exacte « gbs.snapshot » est concernée : un appel
 // batché avec d'autres procédures traverse sans ETag.
-app.use("/api/trpc/gbs.snapshot", async (c, next) => {
-  await next();
-  if (c.res.status !== 200) return;
-  const corps = await c.res.clone().text();
-  const etag = `"${createHash("sha256").update(corps).digest("base64url")}"`;
-  if (c.req.header("if-none-match") === etag) {
-    c.res = new Response(null, { status: 304, headers: { etag } });
-    return;
-  }
-  const entetes = new Headers(c.res.headers);
-  entetes.set("etag", etag);
-  entetes.delete("content-length"); // le corps compressé changera de taille
-  c.res = new Response(corps, { status: 200, headers: entetes });
-});
+app.use("/api/trpc/gbs.snapshot", etagSnapshot);
 app.use("/api/trpc/*", async (c) => {
   return fetchRequestHandler({
     endpoint: "/api/trpc",
