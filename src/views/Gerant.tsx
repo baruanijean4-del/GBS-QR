@@ -146,7 +146,7 @@ function TableauGerant({ terrasseId, alertesNonLues }: { terrasseId: string; ale
       </div>
 
       {/* Solde de la boutique + dépenses du jour (caisse) */}
-      <BlocCaisse terrasseId={terrasseId} afficherDeclaration={false} typeEtablissement={db.terrasses.find((t) => t.id === terrasseId)?.type} />
+      <BlocCaisse terrasseId={terrasseId} afficherDeclaration={false} typeEtablissement={db.terrasses.find((ter) => ter.id === terrasseId)?.type ?? 'TERRASSE'} />
 
       {impayees.length > 0 && (
         <div className="flex items-center gap-3 rounded-2xl border border-ambre/40 bg-ambre/10 px-4 py-3">
