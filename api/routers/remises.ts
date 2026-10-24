@@ -6,12 +6,13 @@
 // La DB utilise la colonne `organisationId` pour stocker le `terrasseId`.
 // ============================================================
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import * as s from "@db/schema";
 import { createRouter, protegee } from "../middleware";
 import { alerter, db, erreur, journaliser, rolesSurDb } from "../gbsRouter";
 import { maintenant, uid } from "../gbsUtils";
+import type { RoleActif } from "@contracts/types";
 
 const SEUIL_CDF_DEFAUT = 5000;
 const SEUIL_USD_DEFAUT = 200;
@@ -28,76 +29,132 @@ async function exigerRole(acteurId: string, terrasseId: string, attendus: readon
   erreur(`Action réservée : ${action.toLowerCase()}.`);
 }
 
+
+/** Une remise stocke dans `organisation_id` soit un id d'ÉTABLISSEMENT (ancien
+ *  flux de ce routeur, relu tel quel par le snapshot front), soit un id
+ *  d'ORGANISATION (flux notes.remettreCaisse). Cette fonction résout les deux. */
+async function terrassesDeRemise(cle: string): Promise<{ id: string; organisationId: string }[]> {
+  const parId = await db().select({ id: s.terrasses.id, organisationId: s.terrasses.organisationId })
+    .from(s.terrasses).where(eq(s.terrasses.id, cle));
+  if (parId.length > 0) return parId;
+  return db().select({ id: s.terrasses.id, organisationId: s.terrasses.organisationId })
+    .from(s.terrasses).where(eq(s.terrasses.organisationId, cle));
+}
+
+/** Exige un rôle de gérance sur AU MOINS un établissement de la remise. */
+async function exigerGeranceRemise(acteurId: string, cle: string, action: string) {
+  const terrasses = await terrassesDeRemise(cle);
+  if (terrasses.length === 0) erreur("Établissement de la remise introuvable.");
+  for (const t of terrasses) {
+    const roles = await rolesSurDb(acteurId, t.id);
+    if (roles.some((r) => r === "GERANT" || r === "PROPRIETAIRE")) {
+      return { role: (roles.includes("PROPRIETAIRE") ? "PROPRIETAIRE" : "GERANT") as RoleActif, terrasseId: t.id };
+    }
+  }
+  await journaliser(acteurId, null, "PERMISSION_REFUSEE", `${action} tentée sans rôle habilité`,
+    { terrasseId: terrasses[0].id });
+  erreur(`Action réservée : ${action.toLowerCase()}.`);
+}
+
 export const remisesRouter = createRouter({
-  // ── 1. Le réceptionniste DÉCLARE sa caisse ────────────────
+  // ── 1. L'employé DÉCLARE sa caisse ────────────────────────
+  // SÉCURITÉ : le montant ATTENDU est calculé ICI, côté serveur, à partir
+  // des encaissements CASH « en main » de l'employé. Les champs
+  // attenduCdf / attenduUsd envoyés par d'anciens clients sont IGNORÉS.
   declarer: protegee
     .input(z.object({
       terrasseId: z.string().min(1),
-      attenduCdf: z.number().int().min(0),
-      attenduUsd: z.number().int().min(0),
+      /** @deprecated ignoré : calculé par le serveur. */
+      attenduCdf: z.number().int().min(0).optional(),
+      /** @deprecated ignoré : calculé par le serveur. */
+      attenduUsd: z.number().int().min(0).optional(),
       recuCdf: z.number().int().min(0),
       recuUsd: z.number().int().min(0),
       motifEcart: z.string().max(200).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const acteurId = ctx.session.utilisateurId;
-        const role = await exigerRole(acteurId, input.terrasseId, ["RECEPTIONNISTE", "SERVEUSE", "VENDEUR", "PHARMACIEN"], "Déclaration de caisse");
+      const role = await exigerRole(acteurId, input.terrasseId, ["RECEPTIONNISTE", "SERVEUSE", "VENDEUR", "PHARMACIEN"], "Déclaration de caisse");
 
-      const ecartCdf = input.recuCdf - input.attenduCdf;
-      const ecartUsd = input.recuUsd - input.attenduUsd;
-      const aEcart = ecartCdf !== 0 || ecartUsd !== 0;
+      const [terrasse] = await db().select().from(s.terrasses)
+        .where(eq(s.terrasses.id, input.terrasseId)).limit(1);
+      if (!terrasse) erreur("Établissement introuvable.");
 
-      if (aEcart && !input.motifEcart?.trim()) {
-        erreur("Motif obligatoire en cas d'écart de caisse.");
-      }
+      // Une déclaration en attente couvre déjà le cash en main.
+      const [enAttente] = await db().select({ id: s.remisesCaisse.id }).from(s.remisesCaisse)
+        .where(and(
+          eq(s.remisesCaisse.employeId, acteurId),
+          inArray(s.remisesCaisse.organisationId, [input.terrasseId, terrasse.organisationId]),
+          eq(s.remisesCaisse.statut, "EN_ATTENTE"),
+        )).limit(1);
+      if (enAttente) erreur("Une déclaration est déjà en attente de validation par le gérant.");
 
       const id = uid("rem");
       const le = maintenant();
 
-      // Insertion : la DB utilise organisationId pour stocker le terrasseId
-      await db().insert(s.remisesCaisse).values({
-        id,
-        organisationId: input.terrasseId,  // mapping terrasse → organisation (colonne legacy)
-        employeId: acteurId,
-        attenduCdf: input.attenduCdf,
-        attenduUsd: input.attenduUsd,
-        recuCdf: input.recuCdf,
-        recuUsd: input.recuUsd,
-        statut: "EN_ATTENTE",
-        motifEcart: input.motifEcart ?? null,
-        creeLe: le,
+      // Transaction : calcul de l'attendu + liaison des encaissements, sous
+      // verrou (deux déclarations simultanées ne peuvent pas compter deux
+      // fois le même cash).
+      const { attenduCdf, attenduUsd } = await db().transaction(async (tx) => {
+        const enMain = await tx.select().from(s.encaissements)
+          .where(and(
+            eq(s.encaissements.encaisseParId, acteurId),
+            eq(s.encaissements.organisationId, terrasse.organisationId),
+            eq(s.encaissements.statut, "EN_MAIN"),
+            eq(s.encaissements.mode, "CASH"),
+            sql`${s.encaissements.remiseId} IS NULL`,
+          )).for("update");
+        const attCdf = enMain.reduce((x, e) => x + e.montantCdf, 0);
+        const attUsd = enMain.reduce((x, e) => x + e.montantUsd, 0);
+        if (enMain.length === 0 && input.recuCdf === 0 && input.recuUsd === 0) {
+          erreur("Aucun cash en main à déclarer.");
+        }
+        const ecC = input.recuCdf - attCdf;
+        const ecU = input.recuUsd - attUsd;
+        if ((ecC !== 0 || ecU !== 0) && !input.motifEcart?.trim()) {
+          erreur("Motif obligatoire en cas d'écart de caisse.");
+        }
+        // Convention conservée : `organisation_id` = id de l'établissement
+        // (relu ainsi par le snapshot front).
+        await tx.insert(s.remisesCaisse).values({
+          id, organisationId: input.terrasseId, employeId: acteurId,
+          attenduCdf: attCdf, attenduUsd: attUsd,
+          recuCdf: input.recuCdf, recuUsd: input.recuUsd,
+          statut: "EN_ATTENTE", motifEcart: input.motifEcart?.trim() || null, creeLe: le,
+        });
+        if (enMain.length > 0) {
+          await tx.update(s.encaissements).set({ remiseId: id })
+            .where(inArray(s.encaissements.id, enMain.map((e) => e.id)));
+        }
+        return { attenduCdf: attCdf, attenduUsd: attUsd };
       });
+
+      const ecartCdf = input.recuCdf - attenduCdf;
+      const ecartUsd = input.recuUsd - attenduUsd;
+      const aEcart = ecartCdf !== 0 || ecartUsd !== 0;
 
       await journaliser(
         acteurId, role, "CAISSE_DECLAREE",
-        `Attendu ${input.attenduCdf} CDF / Declare ${input.recuCdf} CDF - Ecart ${ecartCdf} CDF, ${ecartUsd} cent. USD`,
+        `Attendu ${attenduCdf} CDF / ${attenduUsd} cent. USD — déclaré ${input.recuCdf} CDF / ${input.recuUsd} cent. USD — écart ${ecartCdf} CDF, ${ecartUsd} cent. USD`,
         {
           terrasseId: input.terrasseId,
-          avant: JSON.stringify({ attenduCdf: input.attenduCdf, attenduUsd: input.attenduUsd }),
+          avant: JSON.stringify({ attenduCdf, attenduUsd }),
           apres: JSON.stringify({ recuCdf: input.recuCdf, recuUsd: input.recuUsd }),
         },
       );
 
       if (aEcart) {
-        // Seuil personnalisé par l'établissement (ou défaut)
-        const [seuils] = await db()
-          .select({ cdf: s.terrasses.seuilEcartCdf, usd: s.terrasses.seuilEcartUsd })
-          .from(s.terrasses)
-          .where(eq(s.terrasses.id, input.terrasseId))
-          .limit(1);
-
-        const seuilCdf = seuils?.cdf ?? SEUIL_CDF_DEFAUT;
-        const seuilUsd = seuils?.usd ?? SEUIL_USD_DEFAUT;
+        const seuilCdf = terrasse.seuilEcartCdf ?? SEUIL_CDF_DEFAUT;
+        const seuilUsd = terrasse.seuilEcartUsd ?? SEUIL_USD_DEFAUT;
         const critique = Math.abs(ecartCdf) > seuilCdf || Math.abs(ecartUsd) > seuilUsd;
-
         await alerter(
           input.terrasseId,
           critique ? "ECART_CAISSE_CRITIQUE" : "ECART_CAISSE",
-          `Ecart ${critique ? "CRITIQUE" : ""} de ${ecartCdf} CDF / ${ecartUsd} cent. USD (seuils : ${seuilCdf}/${seuilUsd}). Motif : ${input.motifEcart ?? "-"}`,
+          `Ecart ${critique ? "CRITIQUE " : ""}de ${ecartCdf} CDF / ${ecartUsd} cent. USD (seuils : ${seuilCdf}/${seuilUsd}). Motif : ${input.motifEcart ?? "-"}`,
         );
       }
 
-      return { id, ecartCdf, ecartUsd, alerte: aEcart };
+      return { id, ecartCdf, ecartUsd, alerte: aEcart, attenduCdf, attenduUsd };
     }),
 
   // ── 2. Le gérant VALIDE (jamais sa propre déclaration) ────
@@ -111,42 +168,58 @@ export const remisesRouter = createRouter({
     .mutation(async ({ ctx, input }) => {
       const acteurId = ctx.session.utilisateurId;
 
-      const [remise] = await db()
-        .select()
-        .from(s.remisesCaisse)
-        .where(eq(s.remisesCaisse.id, input.remiseId))
-        .limit(1);
-
+      const [remise] = await db().select().from(s.remisesCaisse)
+        .where(eq(s.remisesCaisse.id, input.remiseId)).limit(1);
       if (!remise) erreur("Remise introuvable.");
       if (remise.statut !== "EN_ATTENTE") erreur("Remise deja traitee.");
       if (remise.employeId === acteurId) {
-        erreur("Auto-validation interdite : un gerant ne valide pas sa propre declaration.");
+        erreur("Auto-validation interdite : on ne valide pas sa propre declaration.");
       }
 
-      const role = await exigerRole(acteurId, remise.organisationId, ["GERANT", "PROPRIETAIRE"], "Validation de la caisse");
+      const { role, terrasseId } = await exigerGeranceRemise(acteurId, remise.organisationId, "Validation de la caisse");
+
+      // Écart = comptage du gérant vs attendu calculé par le serveur.
+      const ecartCdf = input.recuCdf - remise.attenduCdf;
+      const ecartUsd = input.recuUsd - remise.attenduUsd;
+      const aEcart = ecartCdf !== 0 || ecartUsd !== 0;
+      const motif = (input.motifEcart ?? remise.motifEcart ?? "").trim();
+      if (aEcart && !motif) erreur("Un écart exige un motif.");
       const le = maintenant();
 
-      await db().update(s.remisesCaisse)
-        .set({
-        statut: "VALIDE",
-        validePar: acteurId,
-        valideLe: le,
-        recuCdf: input.recuCdf,
-        recuUsd: input.recuUsd,
-        motifEcart: input.motifEcart ?? remise.motifEcart,
-      })
-        .where(eq(s.remisesCaisse.id, input.remiseId));
+      await db().transaction(async (tx) => {
+        // Mise à jour CONDITIONNELLE : une seule validation peut réussir.
+        const [maj] = await tx.update(s.remisesCaisse)
+          .set({
+            statut: "VALIDE", validePar: acteurId, valideLe: le,
+            recuCdf: input.recuCdf, recuUsd: input.recuUsd,
+            motifEcart: aEcart ? motif : null,
+          })
+          .where(and(eq(s.remisesCaisse.id, remise.id), eq(s.remisesCaisse.statut, "EN_ATTENTE")))
+          .returning({ id: s.remisesCaisse.id });
+        if (!maj) erreur("Remise deja traitee.");
+        // Le cash quitte la poche de l'employé (REMIS) ou est marqué ECART.
+        await tx.update(s.encaissements)
+          .set({ statut: aEcart ? "ECART" : "REMIS", remisLe: le })
+          .where(eq(s.encaissements.remiseId, remise.id));
+      });
 
+      if (aEcart) {
+        await alerter(terrasseId, "ECART_REMISE",
+          `Écart à la validation : attendu ${remise.attenduCdf} FC / ${remise.attenduUsd} ¢, compté ${input.recuCdf} FC / ${input.recuUsd} ¢ — ${motif}`);
+      }
       await journaliser(
-        acteurId, role, "REMISE_VALIDEE",
-        `Remise ${input.remiseId} validee. Attendu ${remise.attenduCdf} CDF / Recu ${input.recuCdf} CDF. Motif ecart : ${input.motifEcart ?? "-"}`,
-        { terrasseId: remise.organisationId },
+        acteurId, role, aEcart ? "REMISE_ECART" : "REMISE_VALIDEE",
+        `Remise ${remise.id} : attendu ${remise.attenduCdf}/${remise.attenduUsd}, compté ${input.recuCdf}/${input.recuUsd}${aEcart ? ` — motif : ${motif}` : ""}`,
+        {
+          terrasseId,
+          avant: JSON.stringify({ declareCdf: remise.recuCdf, declareUsd: remise.recuUsd }),
+          apres: JSON.stringify({ recuCdf: input.recuCdf, recuUsd: input.recuUsd }),
+        },
       );
-
-      return { ok: true };
+      return { ok: true, ecart: aEcart };
     }),
 
-  // ── 3. Le gérant CONTESTE ─────────────────────────────────
+  // ── 3. Le gérant CONTESTE (uniquement une remise EN_ATTENTE) ─
   contester: protegee
     .input(z.object({
       remiseId: z.string().min(1),
@@ -155,37 +228,27 @@ export const remisesRouter = createRouter({
     .mutation(async ({ ctx, input }) => {
       const acteurId = ctx.session.utilisateurId;
 
-      const [remise] = await db()
-        .select()
-        .from(s.remisesCaisse)
-        .where(eq(s.remisesCaisse.id, input.remiseId))
-        .limit(1);
-
+      const [remise] = await db().select().from(s.remisesCaisse)
+        .where(eq(s.remisesCaisse.id, input.remiseId)).limit(1);
       if (!remise) erreur("Remise introuvable.");
+      if (remise.statut !== "EN_ATTENTE") erreur("Remise deja traitee : elle ne peut plus etre contestee.");
+      if (remise.employeId === acteurId) erreur("Auto-contestation interdite.");
 
-      const role = await exigerRole(acteurId, remise.organisationId, ["GERANT", "PROPRIETAIRE"], "Validation de la caisse");
+      const { role, terrasseId } = await exigerGeranceRemise(acteurId, remise.organisationId, "Validation de la caisse");
       const le = maintenant();
 
-      await db().update(s.remisesCaisse)
-        .set({
-          statut: "CONTESTE",
-          validePar: acteurId,
-          valideLe: le,
-          motifEcart: input.motifContest,
-        })
-        .where(eq(s.remisesCaisse.id, input.remiseId));
+      const [maj] = await db().update(s.remisesCaisse)
+        .set({ statut: "CONTESTE", validePar: acteurId, valideLe: le, motifEcart: input.motifContest })
+        .where(and(eq(s.remisesCaisse.id, input.remiseId), eq(s.remisesCaisse.statut, "EN_ATTENTE")))
+        .returning({ id: s.remisesCaisse.id });
+      if (!maj) erreur("Remise deja traitee : elle ne peut plus etre contestee.");
+      // Le cash reste suivi : marqué ECART (jamais libéré sans décision).
+      await db().update(s.encaissements).set({ statut: "ECART" })
+        .where(eq(s.encaissements.remiseId, remise.id));
 
-      await journaliser(
-        acteurId, role, "REMISE_CONTESTEE",
-        `Remise ${input.remiseId} contestee : ${input.motifContest}`,
-        { terrasseId: remise.organisationId },
-      );
-
-      await alerter(
-        remise.organisationId, "REMISE_CONTESTEE",
-        `Remise contestee : ${input.motifContest}`,
-      );
-
+      await journaliser(acteurId, role, "REMISE_CONTESTEE",
+        `Remise ${input.remiseId} contestee : ${input.motifContest}`, { terrasseId });
+      await alerter(terrasseId, "REMISE_CONTESTEE", `Remise contestee : ${input.motifContest}`);
       return { ok: true };
     }),
 
@@ -195,18 +258,17 @@ export const remisesRouter = createRouter({
     .query(async ({ ctx, input }) => {
       const acteurId = ctx.session.utilisateurId;
       await exigerRole(acteurId, input.terrasseId, ["GERANT", "PROPRIETAIRE"], "Consultation des remises en attente");
+      const [terrasse] = await db().select({ organisationId: s.terrasses.organisationId })
+        .from(s.terrasses).where(eq(s.terrasses.id, input.terrasseId)).limit(1);
+      const cles = terrasse ? [input.terrasseId, terrasse.organisationId] : [input.terrasseId];
 
-      const lignes = await db()
-        .select()
-        .from(s.remisesCaisse)
+      return db().select().from(s.remisesCaisse)
         .where(and(
-          eq(s.remisesCaisse.organisationId, input.terrasseId),
+          inArray(s.remisesCaisse.organisationId, cles),
           eq(s.remisesCaisse.statut, "EN_ATTENTE"),
         ))
         .orderBy(desc(s.remisesCaisse.creeLe))
         .limit(100);
-
-      return lignes;
     }),
 
   // ── 5. Le réceptionniste LISTE ses propres déclarations ───

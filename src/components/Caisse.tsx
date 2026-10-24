@@ -14,7 +14,7 @@ import { fmtCDF, fmtUSD, heureLubu } from '@/lib/format'
 import { depensesDuJour, enregistrerDepense, soldeBoutique, useDB, utilisateurDe, declarerCaisse, cleSoldeSelonType } from '@/lib/store'
 import { useT } from '@/i18n'
 
-export function BlocCaisse({ terrasseId, afficherDeclaration = true, typeEtablissement }: { terrasseId: string; afficherDeclaration?: boolean; typeEtablissement?: string }) {
+export function BlocCaisse({ terrasseId, typeEtablissement }: { terrasseId: string; afficherDeclaration?: boolean; typeEtablissement?: string }) {
   const db = useDB()
   const t = useT()
   const [feuille, setFeuille] = useState(false)

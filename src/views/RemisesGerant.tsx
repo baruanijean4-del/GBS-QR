@@ -6,13 +6,13 @@
 // ============================================================
 
 import { useState } from 'react'
-import { CircleAlert, Settings, Wallet, Coins, ReceiptText } from 'lucide-react'
+import { CircleAlert, Settings, Wallet, Coins } from 'lucide-react'
 import { toast } from 'sonner'
 import { Carte, Chargement, Feuille, GrosBouton, Pill, SaisieNombre, Vide, classeSaisie } from '@/components/gbs'
 import { fmtCDF, fmtUSD, ilYA } from '@/lib/format'
 import {
   useDB, validerRemiseNote, utilisateurDe,
-  declarerCaisse, listerRemisesEnAttente, validerCaisse, contesterCaisse,
+  validerCaisse, contesterCaisse,
   ouEstLArgent,
 } from '@/lib/store'
 import { useT } from '@/i18n'
@@ -23,7 +23,7 @@ export function PanneauRemisesGerant({ terrasseId }: { terrasseId: string }) {
   const db = useDB()
   const [remiseChoisie, setRemiseChoisie] = useState<string | null>(null)
   const [remiseCaisseChoisie, setRemiseCaisseChoisie] = useState<string | null>(null)
-  const [depotChoisi, setDepotChoisi] = useState<string | null>(null)
+  const [, setDepotChoisi] = useState<string | null>(null)
   const [plafond, setPlafond] = useState<string>(() => {
     const ter = db.terrasses.find((x) => x.id === terrasseId)
     return (ter as any)?.notePlafondCdf ? String((ter as any).notePlafondCdf) : ''
@@ -99,10 +99,10 @@ export function PanneauRemisesGerant({ terrasseId }: { terrasseId: string }) {
 
       {/* ---------- SECTION 1 : Déclarations de caisse (remises.ts) ---------- */}
       <p className="text-xs font-bold uppercase tracking-widest text-sable/50">{t('note.remises_caisse_titre')}</p>
-      {remisesCaisse.data.length === 0 ? (
+      {(remisesCaisse.data ?? []).length === 0 ? (
         <Vide icone={<Coins className="h-8 w-8" />} titre={t('note.aucune_remise_caisse')} detail={t('note.aucune_remise_caisse_d')} />
       ) : (
-        remisesCaisse.data.map((r) => (
+        (remisesCaisse.data ?? []).map((r) => (
           <button key={r.id} onClick={() => setRemiseCaisseChoisie(r.id)} className="text-left">
             <Carte classe="active:bg-white/5">
               <div className="flex items-center justify-between">
@@ -166,7 +166,7 @@ export function PanneauRemisesGerant({ terrasseId }: { terrasseId: string }) {
                     <p className="text-xs text-sable/55">{ilYA(d.declareLe)} · {d.typeDepot === 'CHAMBRE' ? 'Chambre' : 'Commandes'}</p>
                   </div>
                   <div className="text-right">
-                    <Pill ton={ecart ? 'danger' : 'ambre'}>{t('note.a_valider')}</Pill>
+                    <Pill ton={ecart ? 'rouge' : 'ambre'}>{t('note.a_valider')}</Pill>
                     <p className="mt-1 text-sm font-bold text-white">
                       {d.montantAttenduCdf > 0 ? fmtCDF(d.montantAttenduCdf) : ''}{d.montantAttenduCdf > 0 && d.montantAttenduUsdCentimes > 0 ? ' + ' : ''}{d.montantAttenduUsdCentimes > 0 ? fmtUSD(d.montantAttenduUsdCentimes) : ''}
                     </p>
@@ -209,8 +209,8 @@ export function PanneauRemisesGerant({ terrasseId }: { terrasseId: string }) {
       >
         {remiseCaisseChoisie && (
           <ValidationRemiseCaisse
-            remise={remisesCaisse.data.find((r) => r.id === remiseCaisseChoisie)!}
-            nomEmploye={nomEmploye(remisesCaisse.data.find((r) => r.id === remiseCaisseChoisie)!.employeId)}
+            remise={(remisesCaisse.data ?? []).find((r) => r.id === remiseCaisseChoisie)!}
+            nomEmploye={nomEmploye((remisesCaisse.data ?? []).find((r) => r.id === remiseCaisseChoisie)!.employeId)}
             onFait={() => { setRemiseCaisseChoisie(null); void remisesCaisse.refetch() }}
           />
         )}

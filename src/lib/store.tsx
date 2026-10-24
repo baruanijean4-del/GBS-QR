@@ -489,8 +489,8 @@ export function revoquerAppareil(sessionId: string) {
 
 // ---------- Client (QR) ----------
 
-export function ouvrirSessionClient(token: string, prenom: string): Promise<ClientSession> {
-  return exec(api.gbs.ouvrirSessionClient.mutate({ token, prenom }))
+export function ouvrirSessionClient(token: string, prenom: string, clientSessionId?: string): Promise<ClientSession> {
+  return exec(api.gbs.ouvrirSessionClient.mutate({ token, prenom, clientSessionId }))
 }
 
 export function passerCommande(

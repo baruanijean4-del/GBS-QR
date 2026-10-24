@@ -112,11 +112,17 @@ describe("Hôtel — cycle d'occupation complet", () => {
       .rejects.toThrow(/déjà clôturé/);
   });
 
-  it("ménage : la réceptionniste ne peut PAS valider, la gouvernante oui", async () => {
-    // Contrôle croisé (§4) : qui loge ne déclare pas propre.
-    await expect(appelantRecep.hotel.marquerNettoyee({ chambreId: chambre1 }))
+  it("check-out : AUCUN encaissement automatique (note laissée ouverte)", async () => {
+    const encs = await getDb().select().from(s.encaissements)
+      .where(eq(s.encaissements.organisationId, ORG));
+    expect(encs.length).toBe(0);
+  });
+
+  it("ménage : le rôle GOUVERNANTE (supprimé) est refusé, la réception valide", async () => {
+    // Refonte RBAC : GOUVERNANTE n'existe plus ; la réception valide le ménage.
+    await expect(appelantGouv.hotel.marquerNettoyee({ chambreId: chambre1 }))
       .rejects.toThrow();
-    await appelantGouv.hotel.marquerNettoyee({ chambreId: chambre1 });
+    await appelantRecep.hotel.marquerNettoyee({ chambreId: chambre1 });
     expect((await chambreParId(chambre1)).statut).toBe("LIBRE");
     const audits = await getDb().select().from(s.auditLog)
       .where(and(eq(s.auditLog.action, "HOTEL_CHAMBRE_NETTOYEE"), eq(s.auditLog.terrasseId, ETAB)));

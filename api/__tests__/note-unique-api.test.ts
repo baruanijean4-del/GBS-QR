@@ -77,10 +77,16 @@ beforeAll(async () => {
   await db.insert(s.tablesQr).values([
     { id: TABLE, terrasseId: ETAB, numero: 1, tokenQr: QR, kind: "ZONE", actif: true, creeLe: now },
     { id: "tbl_test_not_b", terrasseId: ETAB, numero: 9, tokenQr: QR_BILLARD, kind: "BILLARD", actif: true, creeLe: now },
+    { id: "tbl_test_not_2", terrasseId: ETAB, numero: 2, tokenQr: "qrtoken_test_not_2", kind: "ZONE", actif: true, creeLe: now },
+    { id: "tbl_test_not_h", terrasseId: ETAB_HOTEL, numero: 1, tokenQr: "qrtoken_test_not_h", kind: "ZONE", actif: true, creeLe: now },
   ]).onConflictDoNothing();
   await db.insert(s.produits).values({
     id: "prd_test_not_1", terrasseId: ETAB, nom: "Primus TestNot", categorie: "Bières",
     prixCdf: 2500, prixUsd: 100, stock: 500, stockReserve: 0, seuilAlerte: 0, actif: true,
+  }).onConflictDoNothing();
+  await db.insert(s.chambres).values({
+    id: "chb_test_not_2", terrasseId: ETAB_HOTEL, numero: "102", type: "SIMPLE",
+    statut: "LIBRE", prixNuitCdf: 40000, prixHeureCdf: null, creeLe: now,
   }).onConflictDoNothing();
   await db.insert(s.chambres).values({
     id: "chb_test_not_1", terrasseId: ETAB_HOTEL, numero: "101", type: "SIMPLE",
@@ -108,6 +114,9 @@ afterAll(async () => {
   await db.delete(s.alertes).where(eq(s.alertes.terrasseId, ETAB_HOTEL));
   await db.delete(s.clientsSession).where(eq(s.clientsSession.tableId, TABLE));
   await db.delete(s.clientsSession).where(eq(s.clientsSession.tableId, "tbl_test_not_b"));
+  await db.delete(s.clientsSession).where(eq(s.clientsSession.tableId, "tbl_test_not_2"));
+  await db.delete(s.clientsSession).where(eq(s.clientsSession.tableId, "tbl_test_not_h"));
+  await db.delete(s.tablesQr).where(eq(s.tablesQr.terrasseId, ETAB_HOTEL));
   await db.delete(s.auditLog).where(eq(s.auditLog.terrasseId, ETAB));
   await db.delete(s.auditLog).where(like(s.auditLog.action, "%NOTE%"));
   await db.delete(s.auditLog).where(like(s.auditLog.action, "%REMISE%"));
@@ -126,6 +135,35 @@ describe("Note unique — identité et cycle de la commande", () => {
     const s1 = await sessionClient("Aline");
     const s2 = await anonyme.gbs.ouvrirSessionClient({ token: QR, prenom: "", clientSessionId: s1.id });
     expect(s2.id).toBe(s1.id);
+  });
+
+  it("changement de table : même client, même note (la dette suit le client)", async () => {
+    const s1 = await sessionClient("Mireille");
+    await commander(s1.id, "cle_test_not_move_1");
+    // Il se déplace à la table 2 et rescanne avec la même session d'appareil
+    const s2 = await anonyme.gbs.ouvrirSessionClient({ token: "qrtoken_test_not_2", prenom: "", clientSessionId: s1.id });
+    expect(s2.id).not.toBe(s1.id);
+    expect(s2.tableId).toBe("tbl_test_not_2");
+    const note1 = await anonyme.notes.voirMaNote({ clientSessionId: s1.id });
+    const note2 = await anonyme.notes.voirMaNote({ clientSessionId: s2.id });
+    expect(note2.note?.id).toBe(note1.note?.id);
+    // Retour à la table 1 : la session existante est réutilisée
+    const s3 = await anonyme.gbs.ouvrirSessionClient({ token: QR, prenom: "", clientSessionId: s2.id });
+    expect(s3.id).toBe(s1.id);
+  });
+
+  it("grosse note : le téléphone est exigé, puis la commande passe", async () => {
+    const sess = await sessionClient("Nadine");
+    const grosse = (cle: string) => anonyme.gbs.passerCommande({
+      token: QR, clientSessionId: sess.id,
+      lignes: [{ produitId: "prd_test_not_1", quantite: 13 }], // 13 × 2 500 = 32 500 FC ≥ seuil
+      cleIdempotence: cle,
+    });
+    await expect(grosse("cle_test_not_tel_1")).rejects.toThrow(/téléphone/);
+    await anonyme.notes.declarerTelephone({ clientSessionId: sess.id, telephone: "0899001122" });
+    await expect(grosse("cle_test_not_tel_2")).resolves.toMatchObject({ statut: "EN_ATTENTE" });
+    const vue = await anonyme.notes.voirMaNote({ clientSessionId: sess.id });
+    expect(vue.telephone).toBe(true);
   });
 
   it("la commande s'ajoute à la note unique, statuts synchronisés", async () => {
@@ -369,5 +407,20 @@ describe("Note unique — chambre d'hôtel (folio)", () => {
     expect(listeServeuse.some((n) => n.id === note?.id)).toBe(false);
     const listeReception = await reception.notes.notesOuvertes({ terrasseId: ETAB_HOTEL });
     expect(listeReception.some((n) => n.id === note?.id)).toBe(true);
+  });
+
+  it("chambre prise depuis le téléphone : numéro exigé, puis la dette est vue au départ", async () => {
+    const sess = await anonyme.gbs.ouvrirSessionClient({ token: "qrtoken_test_not_h", prenom: "Olivier" });
+    const prendre = () => anonyme.hotel.prendreChambreDepuisTerrasse({
+      token: "qrtoken_test_not_h", clientSessionId: sess.id, chambreId: "chb_test_not_2", mode: "NUIT",
+    });
+    await expect(prendre()).rejects.toThrow(/téléphone/);
+    const [avant] = await getDb().select().from(s.chambres).where(eq(s.chambres.id, "chb_test_not_2"));
+    expect(avant?.statut).toBe("LIBRE"); // refus AVANT de bloquer la chambre
+    await anonyme.notes.declarerTelephone({ clientSessionId: sess.id, telephone: "0899003344" });
+    const { sejourId } = await prendre();
+    const out = await reception.hotel.checkOut({ sejourId });
+    expect(out.noteId).not.toBeNull();
+    expect(out.resteCdf).toBeGreaterThan(0); // impayé visible à la réception
   });
 });

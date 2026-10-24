@@ -35,6 +35,8 @@ function normaliser(s: string): string {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 }
 const CLE_CLIENT = (token: string) => `gbs.client.${token}`
+/** Dernière session de ce téléphone, toutes tables confondues */
+const CLE_DERNIER_CLIENT = 'gbs.client.dernier'
 
 interface ClientLocal {
   sessionId: string
@@ -51,6 +53,28 @@ export function VueClient({ token }: { token: string }) {
       return null
     }
   })
+  // Changement de table : ce téléphone a déjà une session ailleurs → on la
+  // rattache à CETTE table (même client, même note) au lieu de repartir de zéro.
+  useEffect(() => {
+    if (client) return
+    let precedent: ClientLocal | null = null
+    try {
+      const brut = localStorage.getItem(CLE_DERNIER_CLIENT)
+      precedent = brut ? (JSON.parse(brut) as ClientLocal) : null
+    } catch { /* stockage indisponible : formulaire normal */ }
+    if (!precedent) return
+    const p = precedent
+    ouvrirSessionClient(token, p.prenom, p.sessionId)
+      .then((s) => {
+        const c = { sessionId: s.id, prenom: p.prenom }
+        try {
+          localStorage.setItem(CLE_CLIENT(token), JSON.stringify(c))
+          localStorage.setItem(CLE_DERNIER_CLIENT, JSON.stringify(c))
+        } catch { /* ignoré */ }
+        setClient(c)
+      })
+      .catch(() => { /* session inconnue ou autre établissement : formulaire normal */ })
+  }, [client, token])
   const portee: Portee = client?.sessionId
     ? { kind: 'client', token, sessionId: client.sessionId }
     : { kind: 'client', token }
@@ -163,6 +187,7 @@ function VueClientInterne({ token, client, setClient }: {
       const s = await ouvrirSessionClient(token, prenom)
       const c = { sessionId: s.id, prenom: prenom.trim() }
       localStorage.setItem(CLE_CLIENT(token), JSON.stringify(c))
+      localStorage.setItem(CLE_DERNIER_CLIENT, JSON.stringify(c))
       setClient(c)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('commun.erreur'))

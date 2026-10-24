@@ -17,8 +17,8 @@ import {
 import { peutAvecRoles } from '../../api/lib/permissions'
 
 const ROLES: RoleEtablissement[] = [
-  'GERANT', 'SERVEUSE', 'CAISSIER', 'CUISINE_BAR', 'BILLARDIER',
-  'RECEPTIONNISTE', 'GOUVERNANTE', 'PHARMACIEN', 'VENDEUR', 'PRESTATAIRE',
+  'GERANT', 'SERVEUSE', 'CUISINE_BAR', 'BILLARDIER',
+  'RECEPTIONNISTE', 'PHARMACIEN', 'VENDEUR', 'PRESTATAIRE',
   // Module traiteur (MODULE-TRAITEUR §9) : fiches de production et
   // bons de sortie — jamais de remise, jamais de montant.
   'CHEF', 'MAGASINIER',

@@ -9,14 +9,14 @@ import { ouvrirSessionAppareil, revoquerSessionAppareil } from "./lib/session";
 import { chiffrerPin, comparerSecret, dechiffrerPin, estChiffre, estHache, verifierPin } from "./lib/pin";
 import { randomInt } from "node:crypto";
 import { enregistrerEchec, reinitialiserEchecs, tentativePermise } from "./lib/limiteur";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import * as s from "@db/schema";
 import type { ActionSensible, Alerte, EntreeAnnuaire, Portee, RoleActif, RoleEtablissement, TypeEtablissement, TypeMouvement, TypeProduit } from "@contracts/types";
 import { aTablesDeSalle, CATEGORIES_PAR_TYPE, categorieParLibelle, fraisInstallationPour, tousLesTypes, typeProduitParDefaut, TYPES_ZONE_UNIQUE } from "@contracts/types";
 import { createRouter, protegee, publicQuery } from "./middleware";
 import {
-  ajouterLignesNoteDb, clientDeSessionDb, encaisserNoteDb, noteOuverteDb,
+  ajouterLignesNoteDb, assurerClientDb, clientDeSessionDb, encaisserNoteDb, exigerTelephoneSiGrosseNoteDb, noteOuverteDb,
   sommesNoteDb, synchroniserLignesCommandeDb,
 } from "./routers/notes";
 import { espaceDepuisQr } from "@contracts/notes";
@@ -619,7 +619,38 @@ export const gbsRouter = createRouter({
       if (input.clientSessionId) {
         const [existante] = await db().select().from(s.clientsSession)
           .where(eq(s.clientsSession.id, input.clientSessionId)).limit(1);
-        if (existante) return existante;
+        if (existante?.tableId === table.id) return existante;
+        if (existante) {
+          // Le client a changé de table : même organisation → nouvelle
+          // session pour CETTE table, rattachée au MÊME client, donc à la
+          // même note. Sans cela, rescanner ouvrait une note vierge et
+          // l'ardoise de la table précédente restait sans payeur.
+          const [tableAvant] = await db().select().from(s.tablesQr).where(eq(s.tablesQr.id, existante.tableId)).limit(1);
+          const [terrAvant] = tableAvant
+            ? await db().select().from(s.terrasses).where(eq(s.terrasses.id, tableAvant.terrasseId)).limit(1)
+            : [];
+          const [terrIci] = await db().select().from(s.terrasses).where(eq(s.terrasses.id, table.terrasseId)).limit(1);
+          if (terrAvant && terrIci && terrAvant.organisationId === terrIci.organisationId) {
+            const client = await assurerClientDb(existante.id);
+            if (client) {
+              // Retour sur une table déjà occupée par ce client : on réutilise sa session
+              const sessions = await db().select({ id: s.clientsSession.id, tableId: s.clientsSession.tableId })
+                .from(s.clientAppareils)
+                .innerJoin(s.clientsSession, eq(s.clientsSession.id, s.clientAppareils.clientSessionId))
+                .where(eq(s.clientAppareils.clientId, client.id));
+              const ici = sessions.find((x) => x.tableId === table.id);
+              if (ici) {
+                const [deja] = await db().select().from(s.clientsSession).where(eq(s.clientsSession.id, ici.id)).limit(1);
+                return deja;
+              }
+              const suite = { id: uid("cli"), tableId: table.id, prenom: existante.prenom, creeLe: maintenant() };
+              await db().insert(s.clientsSession).values(suite);
+              await db().insert(s.clientAppareils)
+                .values({ clientSessionId: suite.id, clientId: client.id, creeLe: maintenant() });
+              return suite;
+            }
+          }
+        }
       }
       if (!input.prenom.trim()) erreur("Indiquez votre prénom pour commander.");
       const session = { id: uid("cli"), tableId: table.id, prenom: input.prenom.trim(), creeLe: maintenant() };
@@ -670,9 +701,15 @@ export const gbsRouter = createRouter({
           }
         }
       } else {
+        // Toutes les sessions du MÊME client (il a pu changer de table)
+        const clientImp = await clientDeSessionDb(sessClient.id);
+        const sessionsClient = clientImp
+          ? (await db().select({ id: s.clientAppareils.clientSessionId }).from(s.clientAppareils)
+              .where(eq(s.clientAppareils.clientId, clientImp.id))).map((x) => x.id)
+          : [];
         const [impayee] = await db().select({ id: s.commandes.id }).from(s.commandes)
           .where(and(
-            eq(s.commandes.clientSessionId, sessClient.id),
+            inArray(s.commandes.clientSessionId, [sessClient.id, ...sessionsClient]),
             eq(s.commandes.statut, "SERVIE"),
             isNull(s.commandes.payeeLe),
           )).limit(1);
@@ -693,6 +730,11 @@ export const gbsRouter = createRouter({
         }
         lignes.push({ produitId: p.id, nom: p.nom, quantite: l.quantite, prixCdf: p.prixCdf, prixUsdCentimes: p.prixUsd });
       }
+
+      // Numéro de téléphone exigé au-delà du seuil (règle commune à tous les espaces)
+      await exigerTelephoneSiGrosseNoteDb(sessClient.id,
+        lignes.reduce((x, l) => x + l.prixCdf * l.quantite, 0),
+        lignes.reduce((x, l) => x + l.prixUsdCentimes * l.quantite, 0));
 
       const commandeId = uid("cmd");
       // Règle taux : le taux du jour est FIGÉ sur la commande au

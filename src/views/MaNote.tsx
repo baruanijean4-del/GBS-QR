@@ -16,7 +16,7 @@ import { Carte, Chargement, Confirmation, GrosBouton, Pill, Vide, classeSaisie }
 import type { EspaceNote, LigneNoteVue, NoteVue } from '@contracts/notes'
 import { fmtCDF, fmtUSD, ilYA } from '@/lib/format'
 import {
-  deciderPriseEnChargeClienteNote, demanderAdditionNote, proposerPriseEnChargeNote,
+  declarerTelephoneNote, deciderPriseEnChargeClienteNote, demanderAdditionNote, proposerPriseEnChargeNote,
 } from '@/lib/store'
 import { trpc } from '@/providers/trpc'
 import { useT } from '@/i18n'
@@ -104,6 +104,7 @@ export function OngletMaNote({ sessionId }: { sessionId: string }) {
   const t = useT()
   const [tableCible, setTableCible] = useState('')
   const [confirmeAddition, setConfirmeAddition] = useState(false)
+  const [telephone, setTelephone] = useState('')
   const vue = trpc.notes.voirMaNote.useQuery(
     { clientSessionId: sessionId },
     { refetchInterval: 5000 }, // la note bouge sans recharger (commande confirmée, encaissement…)
@@ -125,6 +126,14 @@ export function OngletMaNote({ sessionId }: { sessionId: string }) {
       await demanderAdditionNote(sessionId)
       setConfirmeAddition(false)
       toast.success(t('note.addition_envoyee'))
+      void vue.refetch()
+    } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
+  }
+  const enregistrerTelephone = async () => {
+    try {
+      await declarerTelephoneNote(sessionId, telephone.trim())
+      setTelephone('')
+      toast.success(t('note.tel_ok'))
       void vue.refetch()
     } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
   }
@@ -181,6 +190,29 @@ export function OngletMaNote({ sessionId }: { sessionId: string }) {
         />
       ) : (
         <Vide icone={<ReceiptText className="h-8 w-8" />} titre={t('note.vide')} detail={t('note.vide_d')} />
+      )}
+
+      {/* Identifiant de secours : le numéro retrouve la note si le client change d'appareil */}
+      {!vue.data.telephone && (
+        <Carte classe="mb-4">
+          <p className="mb-1 text-sm font-bold text-white">{t('note.tel_titre')}</p>
+          <p className="mb-3 text-xs text-sable/60">{t('note.tel_d')}</p>
+          <div className="flex items-center gap-2">
+            <input
+              className={`${classeSaisie} flex-1`}
+              value={telephone}
+              onChange={(e) => setTelephone(e.target.value)}
+              placeholder={t('note.tel_ph')}
+              inputMode="tel"
+              aria-label={t('note.tel_titre')}
+            />
+            <div className="w-28 shrink-0">
+              <GrosBouton petit desactive={telephone.replace(/\D/g, '').length < 9} onClick={() => void enregistrerTelephone()}>
+                {t('note.envoyer')}
+              </GrosBouton>
+            </div>
+          </div>
+        </Carte>
       )}
 
       {/* ANNEXE-3 : « je paie pour la table N » */}

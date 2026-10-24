@@ -43,7 +43,7 @@ import {
   ajouterTableDb, alerter, db, erreur, exigerGerantOuProprio, journaliser, rolesSurDb, tauxCourantDb,
 } from "../gbsRouter";
 import { exigerPermission } from "../lib/permissions";
-import { ajouterLignesNoteDb, encaisserNoteDb, sommesNoteDb } from "./notes";
+import { ajouterLignesNoteDb, encaisserNoteDb, exigerTelephoneSiGrosseNoteDb, sommesNoteDb } from "./notes";
 import { maintenant, uid } from "../gbsUtils";
 
 const zReglePerdant = z.enum(["RACHAT", "FIN_FILE", "SORTIE"]);
@@ -306,6 +306,7 @@ export const billardRouter = createRouter({
         erreur("Vous avez déjà un token actif sur ce billard.");
       }
       const config = await configPour(table.terrasseId);
+      await exigerTelephoneSiGrosseNoteDb(sess.id, config.prixTokenCdf);
       const refMobile = input.referenceMobile
         ? normaliserReferenceMobile(input.referenceMobile)
         : null;

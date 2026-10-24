@@ -314,6 +314,29 @@ export async function sommesNoteDb(noteId: string) {
   };
 }
 
+/** Note (reste dû + nouvel achat) à partir de laquelle le téléphone du client est exigé */
+const SEUIL_TELEPHONE_CDF = 30_000;
+const SEUIL_TELEPHONE_USD = 1_000; // centimes = 10 $
+
+/** Règle commune à TOUS les espaces (terrasse, billard, hôtel, boutique…) :
+ *  au-delà du seuil, le client doit avoir déclaré son téléphone — sinon sa
+ *  note ne se retrouve plus s'il change d'appareil. Exempt : client en
+ *  chambre (le folio garantit le paiement).
+ *  shortcut: seuils fixes pour tous les établissements, à rendre
+ *  configurables (colonne par établissement) si les gérants le demandent. */
+export async function exigerTelephoneSiGrosseNoteDb(
+  clientSessionId: string, ajoutCdf: number, ajoutUsd = 0,
+): Promise<void> {
+  const client = await assurerClientDb(clientSessionId);
+  if (!client || client.telephone) return;
+  const note = await noteOuverteDb(client.id);
+  if (note?.sejourId) return;
+  const du = note ? await sommesNoteDb(note.id) : { resteCdf: 0, resteUsd: 0 };
+  if (du.resteCdf + ajoutCdf >= SEUIL_TELEPHONE_CDF || du.resteUsd + ajoutUsd >= SEUIL_TELEPHONE_USD) {
+    erreur("Votre note dépasse le seuil : indiquez votre numéro de téléphone dans l'onglet « Ma note » pour continuer.");
+  }
+}
+
 /** Statut métier vivant de la source d'une ligne (commande en
  *  préparation, token en file…) — pour l'écran « Ma note ». */
 async function detailStatutsDb(lignes: { type: string; refId: string | null }[]): Promise<Map<string, string>> {
@@ -656,7 +679,7 @@ export const notesRouter = createRouter({
     .input(z.object({ clientSessionId: z.string() }))
     .query(async ({ input }) => {
       const client = await clientDeSessionDb(input.clientSessionId);
-      if (!client) return { note: null, historique: [] as NoteVue[], priseEnChargeRecue: null };
+      if (!client) return { note: null, historique: [] as NoteVue[], priseEnChargeRecue: null, telephone: false };
       await expirerPrisesDb();
       const note = await noteOuverteDb(client.id);
       // Proposition « quelqu'un paie pour vous » en attente (ANNEXE-3) :
@@ -685,7 +708,7 @@ export const notesRouter = createRouter({
         .orderBy(desc(s.notes.regleeLe)).limit(10);
       const historique: NoteVue[] = [];
       for (const n of reglees) historique.push(await vueNoteDb(n, client.prenom));
-      return { note: note ? await vueNoteDb(note, client.prenom) : null, historique, priseEnChargeRecue };
+      return { note: note ? await vueNoteDb(note, client.prenom) : null, historique, priseEnChargeRecue, telephone: client.telephone !== null };
     }),
 
   /** Le client déclare son téléphone pour retrouver sa note sur un
@@ -1158,6 +1181,7 @@ export const notesRouter = createRouter({
       const [config] = await db().select().from(s.configBillard)
         .where(eq(s.configBillard.terrasseId, table.terrasseId)).limit(1);
       const prix = config?.prixTokenCdf ?? 5000;
+      await exigerTelephoneSiGrosseNoteDb(input.clientSessionId, prix);
       if (!enChambre && terrasse.notePlafondCdf !== null && sommes
         && sommes.resteCdf + prix > terrasse.notePlafondCdf) {
         erreur("Plafond de note atteint — réglez d'abord une partie auprès de la serveuse.");

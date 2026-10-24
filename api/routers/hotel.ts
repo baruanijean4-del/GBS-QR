@@ -15,12 +15,12 @@
 // (audit_log avec établissement + avant/après).
 // ============================================================
 
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import * as s from "@db/schema";
 import { montantSejourCdf, type ModeSejour } from "@contracts/hotel";
 import { createRouter, protegee, publicQuery } from "../middleware";
-import { ajouterLignesNoteDb, encaisserNoteDb, finaliserLigneSejourDb, ouvrirNoteSejourDb, sommesNoteDb } from "./notes";
+import { ajouterLignesNoteDb, assurerClientDb, encaisserNoteDb, exigerTelephoneSiGrosseNoteDb, finaliserLigneSejourDb, noteOuverteDb, ouvrirNoteSejourDb, sommesNoteDb } from "./notes";
 import { enregistrerPhotoChambre } from "../services/storage";
 import {
   db, erreur, exigerGerantOuProprio, journaliser, resoudreTableParToken, rolesSurDb, tauxCourantDb,
@@ -172,7 +172,18 @@ export const hotelRouter = createRouter({
    *  calculé (unités entamées, min 1), passe la chambre A_NETTOYER.
    *  Transaction + FOR UPDATE : un séjour n'est clôturé qu'une fois. */
   checkOut: protegee
-    .input(z.object({ sejourId: z.string() }))
+    .input(z.object({
+      sejourId: z.string(),
+      /** Règlement saisi PAR LA RÉCEPTION au départ (jamais automatique).
+       *  Sans paiement, la note reste OUVERTE (impayé visible) et se règle
+       *  ensuite depuis l'écran Notes avec le bon mode de paiement. */
+      paiement: z.object({
+        mode: z.enum(["CASH", "MOBILE_MONEY"]),
+        montantCdf: z.number().int().min(0),
+        montantUsd: z.number().int().min(0),
+        referenceMobile: z.string().max(30).nullable().optional(),
+      }).optional(),
+    }))
     .mutation(async ({ input, ctx }) => {
       const acteurId = ctx.session.utilisateurId;
       const [sejour] = await db().select().from(s.sejours)
@@ -183,7 +194,7 @@ export const hotelRouter = createRouter({
         .where(eq(s.chambres.id, sejour.chambreId)).limit(1);
       if (!chambre) erreur("Chambre du séjour introuvable.");
 
-      return db().transaction(async (tx) => {
+      const cloture = await db().transaction(async (tx) => {
         const [verrou] = await tx.execute(sql`
           SELECT id, statut FROM sejours WHERE id = ${sejour.id} FOR UPDATE
         `) as unknown as [{ id: string; statut: string }];
@@ -213,34 +224,54 @@ export const hotelRouter = createRouter({
         // définitif (unités entamées, min 1).
         await finaliserLigneSejourDb(sejour.id, montant,
           `Chambre ${chambre.numero} — ${sejour.mode === "NUIT" ? "nuitée(s)" : "heure(s)"}`);
-        // ENCAISSEMENT AUTOMATIQUE : l'argent du sejour entre dans la caisse
-        // Regle GBS : « La ou l'argent disparait, GBS le voit. »
-        const [noteSejour] = await db().select({ id: s.notes.id }).from(s.notes)
-          .where(eq(s.notes.sejourId, sejour.id)).limit(1);
-        if (noteSejour) {
-          const { resteCdf, resteUsd } = await sommesNoteDb(noteSejour.id);
-          if (resteCdf > 0 || resteUsd > 0) {
-            await encaisserNoteDb({
-              noteId: noteSejour.id,
-              acteurId: acteurId,
-              montantCdf: resteCdf,
-              montantUsd: resteUsd,
-              mode: "CASH",
-            });
-            await journaliser(acteurId, role, "ENCAISSEMENT_AUTO",
-              `Check-out chambre ${chambre.numero} : ${resteCdf} FC encaisses automatiquement`,
-              { terrasseId: sejour.terrasseId });
-          }
-        }
-
+        // PAS d'encaissement automatique : l'argent n'entre en caisse que
+        // si la réception saisit le mode ET le montant réellement reçus.
         return { ok: true as const, montantTotalCdf: montant };
       });
+
+      // Hors transaction (pas de transaction imbriquée) : règlement saisi
+      // par la réception, puis calcul du reste dû restant.
+      // Séjour ouvert par la réception : note liée par sejour_id. Chambre
+      // prise depuis le téléphone du client : la note n'a pas de sejour_id,
+      // on la retrouve par sa ligne CHAMBRE (sinon le départ affichait
+      // « reste 0 » alors que le client n'avait rien payé).
+      const [parSejour] = await db().select({ id: s.notes.id }).from(s.notes)
+        .where(eq(s.notes.sejourId, sejour.id)).limit(1);
+      const [parLigne] = parSejour ? [] : await db().select({ id: s.noteLignes.noteId }).from(s.noteLignes)
+        .where(and(eq(s.noteLignes.type, "CHAMBRE"), eq(s.noteLignes.refId, sejour.id))).limit(1);
+      const noteSejour = parSejour ?? parLigne;
+      // Le séjour est déjà clôturé : un paiement refusé (montant > reste dû,
+      // référence mobile invalide) ne doit pas faire échouer le check-out.
+      let paiementRefuse: string | null = null;
+      if (noteSejour && input.paiement && (input.paiement.montantCdf > 0 || input.paiement.montantUsd > 0)) {
+        try {
+          await encaisserNoteDb({
+            noteId: noteSejour.id, acteurId,
+            montantCdf: input.paiement.montantCdf, montantUsd: input.paiement.montantUsd,
+            mode: input.paiement.mode, referenceMobile: input.paiement.referenceMobile ?? null,
+          });
+          await journaliser(acteurId, role, "HOTEL_REGLEMENT_CHECKOUT",
+            `Chambre ${chambre.numero} : ${input.paiement.montantCdf} FC / ${input.paiement.montantUsd} ¢ en ${input.paiement.mode}`,
+            { terrasseId: sejour.terrasseId });
+        } catch (e) {
+          paiementRefuse = e instanceof Error ? e.message : "Paiement refusé.";
+        }
+      }
+      let resteCdf = 0, resteUsd = 0;
+      if (noteSejour) {
+        const sommes = await sommesNoteDb(noteSejour.id);
+        resteCdf = sommes.resteCdf; resteUsd = sommes.resteUsd;
+        if (resteCdf > 0 || resteUsd > 0) {
+          await journaliser(acteurId, role, "HOTEL_CHECKOUT_IMPAYE",
+            `Chambre ${chambre.numero} : reste dû ${resteCdf} FC / ${resteUsd} ¢ — note laissée ouverte`,
+            { terrasseId: sejour.terrasseId });
+        }
+      }
+      return { ...cloture, resteCdf, resteUsd, noteId: noteSejour?.id ?? null, paiementRefuse };
     }),
 
-  /** Ménage validé (prompt maître §7) : la gouvernante repasse la
-   *  chambre A_NETTOYER → LIBRE. Elle seule (avec la direction) peut
-   *  le faire — jamais la réception, sinon une chambre sale serait
-   *  revendue sans contrôle croisé. */
+  /** Ménage validé : réception ou direction repasse la chambre
+   *  A_NETTOYER → LIBRE (rôle GOUVERNANTE supprimé, cf. refonte RBAC). */
   marquerNettoyee: protegee
     .input(z.object({ chambreId: z.string() }))
     .mutation(async ({ input, ctx }) => {
@@ -272,18 +303,32 @@ export const hotelRouter = createRouter({
       const table = await resoudreTableParToken(input.token);
       if (!table) erreur('QR code invalide.');
       const [chambre] = await db().select().from(s.chambres).where(eq(s.chambres.id, input.chambreId)).limit(1);
-      if (!chambre || chambre.statut !== 'LIBRE') erreur('Cette chambre n est plus disponible.');
+      if (!chambre) erreur('Chambre introuvable.');
+      // Étanchéité entre établissements : la chambre doit appartenir
+      // à l'établissement du QR scanné.
+      if (chambre.terrasseId !== table.terrasseId) erreur("Cette chambre n'appartient pas à cet établissement.");
       const [sess] = await db().select().from(s.clientsSession).where(eq(s.clientsSession.id, input.clientSessionId)).limit(1);
       if (!sess) erreur('Session client invalide.');
+      // La session client doit provenir d'une table du MÊME établissement.
+      const [tableSess] = await db().select().from(s.tablesQr).where(eq(s.tablesQr.id, sess.tableId)).limit(1);
+      if (!tableSess || tableSess.terrasseId !== table.terrasseId) erreur('Session client invalide.');
+      // Une chambre prise depuis le téléphone est un gros achat : numéro exigé AVANT de bloquer la chambre
+      await exigerTelephoneSiGrosseNoteDb(input.clientSessionId,
+        input.mode === 'HEURE' ? (chambre.prixHeureCdf ?? 0) : (chambre.prixNuitCdf ?? 0));
       const sejourId = uid('sej');
       const maintenantIso = maintenant();
+      const tauxVente = await tauxCourantDb(table.terrasseId);
       await db().transaction(async (tx) => {
-        await tx.update(s.chambres).set({ statut: 'OCCUPEE' }).where(eq(s.chambres.id, chambre.id));
+        // Réservation ATOMIQUE : un seul client peut passer LIBRE → OCCUPEE.
+        const [prise] = await tx.update(s.chambres).set({ statut: 'OCCUPEE' })
+          .where(and(eq(s.chambres.id, chambre.id), eq(s.chambres.statut, 'LIBRE')))
+          .returning({ id: s.chambres.id });
+        if (!prise) erreur("Cette chambre n'est plus disponible.");
         await tx.insert(s.sejours).values({
           id: sejourId, chambreId: chambre.id, terrasseId: table.terrasseId,
           clientNom: sess.prenom, pieceIdentite: null, mode: input.mode,
           arriveeLe: maintenantIso, departLe: null, montantTotalCdf: null,
-          statut: 'EN_COURS', tauxUsdCdf: null, creePar: 'client', creeLe: maintenantIso,
+          statut: 'EN_COURS', tauxUsdCdf: tauxVente, creePar: 'client', creeLe: maintenantIso,
         });
       });
       // Ouvrir la note de séjour (fusionnée avec la note terrasse si elle existe)
@@ -399,18 +444,26 @@ export const hotelRouter = createRouter({
       const table = await resoudreTableParToken(input.token);
       if (!table) erreur("QR code invalide.");
       
-      // On trouve le séjour en cours pour ce client
+      // Le séjour est celui DU CLIENT (via les lignes CHAMBRE de sa note),
+      // jamais « le premier séjour en cours de l'établissement ».
       const [sess] = await db().select().from(s.clientsSession)
         .where(eq(s.clientsSession.id, input.clientSessionId)).limit(1);
       if (!sess) erreur("Session client invalide.");
-      
-      const [sejour] = await db().select().from(s.sejours)
-        .where(and(
-          eq(s.sejours.terrasseId, table.terrasseId),
-          eq(s.sejours.statut, "EN_COURS"),
-        )).limit(1);
+      const [tableSess] = await db().select().from(s.tablesQr).where(eq(s.tablesQr.id, sess.tableId)).limit(1);
+      if (!tableSess || tableSess.terrasseId !== table.terrasseId) erreur("Session client invalide.");
+      const client = await assurerClientDb(input.clientSessionId);
+      const note = client ? await noteOuverteDb(client.id) : null;
+      if (!note) erreur("Aucun séjour en cours.");
+      const lignesChambre = await db().select({ refId: s.noteLignes.refId }).from(s.noteLignes)
+        .where(and(eq(s.noteLignes.noteId, note.id), eq(s.noteLignes.type, "CHAMBRE"),
+          eq(s.noteLignes.terrasseId, table.terrasseId)));
+      const sejourIds = [...new Set(lignesChambre
+        .map((l) => (l.refId ?? "").split("_prolong_")[0]).filter(Boolean))];
+      const [sejour] = sejourIds.length === 0 ? [] : await db().select().from(s.sejours)
+        .where(and(inArray(s.sejours.id, sejourIds), eq(s.sejours.statut, "EN_COURS"),
+          eq(s.sejours.terrasseId, table.terrasseId))).limit(1);
       if (!sejour) erreur("Aucun séjour en cours.");
-      
+
       const [chambre] = await db().select().from(s.chambres)
         .where(eq(s.chambres.id, sejour.chambreId)).limit(1);
       if (!chambre) erreur("Chambre introuvable.");
@@ -419,6 +472,7 @@ export const hotelRouter = createRouter({
         ? (chambre.prixHeureCdf ?? 0)
         : chambre.prixNuitCdf;
       
+      await exigerTelephoneSiGrosseNoteDb(input.clientSessionId, montant);
       // On ajoute la ligne à la note
       await ajouterLignesNoteDb({
         clientSessionId: input.clientSessionId,

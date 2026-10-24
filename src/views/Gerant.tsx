@@ -8,8 +8,8 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import QRCode from 'qrcode'
 import {
-  BedDouble, ChefHat, CircleAlert, ClipboardList, Download, HandCoins, LayoutDashboard, Printer,
-  QrCode, ReceiptText, RefreshCw, Star, Target, UserRound, UsersRound, Wallet,
+  BedDouble, CircleAlert, Download, HandCoins, LayoutDashboard, Printer,
+  RefreshCw, Star, UserRound, UsersRound,
 } from 'lucide-react'
 import { PanneauBillards } from './Billard'
 import { PanneauNotes } from './NotesStaff'
