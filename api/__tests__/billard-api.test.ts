@@ -399,3 +399,36 @@ describe("declarerDefaite — le perdant déclare lui-même (prompt maître §3)
     expect(enCours).toHaveLength(0);
   });
 });
+
+describe("Cash du comptoir : enregistré en caisse, jamais par le propriétaire", () => {
+  it("joueur ajouté payé : un encaissement CASH EN_MAIN de la serveuse existe", async () => {
+    const tok = await appelantServeuse.billard.ajouterJoueurComptoir({ tableId: TABLE, prenom: "Cash TestBil", dejaPaye: true });
+    const [ligne] = await getDb().select().from(s.noteLignes)
+      .where(and(eq(s.noteLignes.type, "TOKEN_BILLARD"), eq(s.noteLignes.refId, tok.id))).limit(1);
+    expect(ligne).toBeDefined();
+    const encs = await getDb().select().from(s.encaissements).where(eq(s.encaissements.noteId, ligne!.noteId));
+    expect(encs).toHaveLength(1);
+    expect(encs[0]?.mode).toBe("CASH");
+    expect(encs[0]?.statut).toBe("EN_MAIN");
+    expect(encs[0]?.encaisseParId).toBe(SERV);
+    expect(encs[0]?.montantCdf).toBe(ligne!.montantCdf);
+  });
+
+  it("le propriétaire ne peut pas encaisser un joueur comptoir (aucun token créé)", async () => {
+    const avant = await getDb().select({ id: s.tokensBillard.id }).from(s.tokensBillard).where(eq(s.tokensBillard.terrasseId, ETAB));
+    await expect(appelantProp.billard.ajouterJoueurComptoir({ tableId: TABLE, prenom: "Refus TestBil", dejaPaye: true }))
+      .rejects.toThrow(/rôle requis/);
+    const apres = await getDb().select({ id: s.tokensBillard.id }).from(s.tokensBillard).where(eq(s.tokensBillard.terrasseId, ETAB));
+    expect(apres).toHaveLength(avant.length);
+  });
+
+  it("joueur ajouté À PAYER puis validé par la serveuse : le cash entre aussi en caisse", async () => {
+    const tok = await appelantServeuse.billard.ajouterJoueurComptoir({ tableId: TABLE, prenom: "Apres TestBil", dejaPaye: false });
+    await appelantServeuse.billard.validerPaiementToken({ tokenId: tok.id });
+    const [ligne] = await getDb().select().from(s.noteLignes)
+      .where(and(eq(s.noteLignes.type, "TOKEN_BILLARD"), eq(s.noteLignes.refId, tok.id))).limit(1);
+    expect(ligne).toBeDefined();
+    const encs = await getDb().select().from(s.encaissements).where(eq(s.encaissements.noteId, ligne!.noteId));
+    expect(encs.map((e) => e.statut)).toEqual(["EN_MAIN"]);
+  });
+});

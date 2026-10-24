@@ -351,6 +351,41 @@ export async function finaliserLigneSejourDb(sejourId: string, montantCdf: numbe
     .where(and(eq(s.noteLignes.type, "CHAMBRE"), eq(s.noteLignes.refId, sejourId)));
 }
 
+/** Joueur de billard ajouté au COMPTOIR (pas de téléphone, donc pas de
+ *  session client) : le cash reçu est enregistré sur une note anonyme
+ *  réglée aussitôt, pour que l'argent entre dans la chaîne de caisse
+ *  (EN_MAIN de l'encaisseur → remise → gérant → propriétaire). Sans cela,
+ *  le cash du comptoir n'apparaissait nulle part. Idempotent par token. */
+export async function encaisserTokenComptoirDb(params: {
+  terrasseId: string; tokenId: string; numero: number; prenom: string;
+  prixCdf: number; tauxUsdCdf: number | null; acteurId: string;
+}): Promise<void> {
+  if (params.prixCdf <= 0) return;
+  const [deja] = await db().select({ id: s.noteLignes.id }).from(s.noteLignes)
+    .where(and(eq(s.noteLignes.type, "TOKEN_BILLARD"), eq(s.noteLignes.refId, params.tokenId))).limit(1);
+  if (deja) return;
+  const [terrasse] = await db().select().from(s.terrasses).where(eq(s.terrasses.id, params.terrasseId)).limit(1);
+  if (!terrasse) erreur("Établissement introuvable.");
+  const clientId = uid("clt");
+  const noteId = uid("not");
+  const le = maintenant();
+  await db().insert(s.clients).values({
+    id: clientId, organisationId: terrasse.organisationId,
+    prenom: params.prenom.slice(0, 60), telephone: null, creeLe: le,
+  });
+  await db().insert(s.notes).values({
+    id: noteId, organisationId: terrasse.organisationId, clientId,
+    sejourId: null, statut: "OUVERTE", ouverteLe: le, tauxUsdCdf: params.tauxUsdCdf,
+  });
+  await db().insert(s.noteLignes).values({
+    id: uid("nln"), noteId, terrasseId: params.terrasseId, espace: "BILLARD", type: "TOKEN_BILLARD",
+    refId: params.tokenId, libelle: `Token billard n°${params.numero} (comptoir)`, quantite: 1,
+    montantCdf: params.prixCdf, montantUsd: 0, tauxUsdCdf: params.tauxUsdCdf,
+    statut: "CONFIRMEE", creeParId: params.acteurId, creeLe: le,
+  });
+  await encaisserNoteDb({ noteId, acteurId: params.acteurId, montantCdf: params.prixCdf, montantUsd: 0 });
+}
+
 /** Totaux et reste dû d'une note (lignes non annulées − encaissé). */
 export async function sommesNoteDb(noteId: string) {
   const lignes = await db().select().from(s.noteLignes).where(eq(s.noteLignes.noteId, noteId));

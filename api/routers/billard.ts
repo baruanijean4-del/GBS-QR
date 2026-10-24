@@ -41,7 +41,7 @@ import {
   ajouterTableDb, alerter, db, erreur, exigerGerantOuProprio, journaliser, rolesSurDb, tauxCourantDb,
 } from "../gbsRouter";
 import { exigerPermission } from "../lib/permissions";
-import { ajouterLignesNoteDb, encaisserNoteDb, exigerRoleCaisseDb, exigerTelephoneSiGrosseNoteDb, sommesNoteDb } from "./notes";
+import { ajouterLignesNoteDb, encaisserNoteDb, encaisserTokenComptoirDb, exigerRoleCaisseDb, exigerTelephoneSiGrosseNoteDb, sommesNoteDb } from "./notes";
 import { maintenant, uid } from "../gbsUtils";
 
 const zReglePerdant = z.enum(["RACHAT", "FIN_FILE", "SORTIE"]);
@@ -549,6 +549,12 @@ export const billardRouter = createRouter({
             });
           }
         }
+      } else {
+        // Joueur ajouté au comptoir, payé après coup : le cash reçu entre en caisse
+        await encaisserTokenComptoirDb({
+          terrasseId: t.terrasseId, tokenId: t.id, numero: t.numero, prenom: t.prenom,
+          prixCdf: t.prixCdf, tauxUsdCdf: t.tauxUsdCdf, acteurId,
+        });
       }
       await journaliser(acteurId, role, "BILLARD_PAIEMENT_VALIDE",
         `Token #${t.numero} (${t.prenom}) — ${t.prixCdf} FC encaissés (cash)`,
@@ -570,6 +576,14 @@ export const billardRouter = createRouter({
         .where(and(eq(s.tablesQr.id, input.tableId), eq(s.tablesQr.kind, "BILLARD"))).limit(1);
       if (!table) erreur("Billard introuvable.");
       const role = await exigerGestionBillard(acteurId, table.terrasseId);
+      // « Déjà payé » = du cash vient d'être reçu : seul le personnel de caisse
+      // le prend (ni gérant ni propriétaire), et il est enregistré en caisse.
+      if (input.dejaPaye) {
+        const [terrasseComptoir] = await db().select({ organisationId: s.terrasses.organisationId })
+          .from(s.terrasses).where(eq(s.terrasses.id, table.terrasseId)).limit(1);
+        if (!terrasseComptoir) erreur("Établissement introuvable.");
+        await exigerRoleCaisseDb(acteurId, terrasseComptoir.organisationId, false);
+      }
       const config = await configPour(table.terrasseId);
       const plage = plageDuJour();
       const duJour = await db().select({ id: s.tokensBillard.id }).from(s.tokensBillard)
@@ -578,9 +592,19 @@ export const billardRouter = createRouter({
       // Règle taux : figé à l'ajout au comptoir (même règle qu'au
       // guichet client — le prix annoncé emporte le taux du moment).
       const tauxVente = await tauxCourantDb(table.terrasseId);
+      const tokenId = uid("tok");
+      const numeroComptoir = duJour.length + 1;
+      // Le cash est enregistré AVANT le token : en cas d'échec, mieux vaut un
+      // encaissement visible sans token qu'un token en file sans encaissement.
+      if (input.dejaPaye) {
+        await encaisserTokenComptoirDb({
+          terrasseId: table.terrasseId, tokenId, numero: numeroComptoir, prenom: input.prenom.trim(),
+          prixCdf: config.prixTokenCdf, tauxUsdCdf: tauxVente, acteurId,
+        });
+      }
       const [cree] = await db().insert(s.tokensBillard).values({
-        id: uid("tok"), terrasseId: table.terrasseId, tableId: table.id,
-        numero: duJour.length + 1, clientSessionId: null, prenom: input.prenom.trim(),
+        id: tokenId, terrasseId: table.terrasseId, tableId: table.id,
+        numero: numeroComptoir, clientSessionId: null, prenom: input.prenom.trim(),
         prixCdf: config.prixTokenCdf,
         statut: input.dejaPaye ? "EN_FILE" : "ATTENTE_PAIEMENT",
         serie: 0, creeLe: maintenantIso,

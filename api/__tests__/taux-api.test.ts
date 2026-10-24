@@ -188,8 +188,8 @@ describe("Taux de change — figé sur chaque ligne de vente", () => {
     let [c1] = await getDb().select().from(s.commandes).where(eq(s.commandes.id, cmd1.id)).limit(1);
     expect(c1.tauxUsdCdf).toBe(2915);
 
-    // 2. Token billard (ajout comptoir par le gérant)
-    const tok = await appelantGer.billard.ajouterJoueurComptoir({ tableId: TABLE_BILL, prenom: "Joueur TestTaux", dejaPaye: true });
+    // 2. Token billard (ajout comptoir par la serveuse : le gérant n'encaisse pas)
+    const tok = await appelantServ.billard.ajouterJoueurComptoir({ tableId: TABLE_BILL, prenom: "Joueur TestTaux", dejaPaye: true });
     const [t1] = await getDb().select().from(s.tokensBillard).where(eq(s.tokensBillard.id, tok.id)).limit(1);
     expect(t1.tauxUsdCdf).toBe(2915);
 
