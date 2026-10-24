@@ -1084,5 +1084,8 @@
     "note.valider_remise_caisse":  "Validate till declaration",
     "note.aucune_remise_caisse_d":  "Receptionist declarations will appear here.",
     "note.remise_contestee":  "Declaration contested — receptionist will be notified",
-    "note.aucune_remise_caisse":  "No pending declaration"
+    "note.aucune_remise_caisse":  "No pending declaration",
+    "note.aucun_depot":  "No pending deposit",
+    "note.aucun_depot_d":  "Waiter deposits will appear here.",
+    "note.depots_serveuses_titre":  "Waiter deposits"
 }

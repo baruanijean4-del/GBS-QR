@@ -1084,5 +1084,8 @@
     "note.valider_remise_caisse":  "Thibitisha tamko la kasha",
     "note.aucune_remise_caisse_d":  "Matamko ya mpokeaji yataonekana hapa.",
     "note.remise_contestee":  "Tamko limepingwa — mpokeaji ataarifiwa",
-    "note.aucune_remise_caisse":  "Hakuna tamko linalosubiri"
+    "note.aucune_remise_caisse":  "Hakuna tamko linalosubiri",
+    "note.aucun_depot":  "Hakuna amana inayosubiri",
+    "note.aucun_depot_d":  "Amana za wahudumu zitaonekana hapa.",
+    "note.depots_serveuses_titre":  "Amana za wahudumu"
 }

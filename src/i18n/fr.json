@@ -1084,5 +1084,8 @@
     "note.valider_remise_caisse":  "Valider la déclaration de caisse",
     "note.aucune_remise_caisse_d":  "Les déclarations du réceptionniste apparaîtront ici.",
     "note.remise_contestee":  "Déclaration contestée — le réceptionniste sera notifié",
-    "note.aucune_remise_caisse":  "Aucune déclaration en attente"
+    "note.aucune_remise_caisse":  "Aucune déclaration en attente",
+    "note.aucun_depot":  "Aucun dépôt en attente",
+    "note.aucun_depot_d":  "Les dépôts des serveuses apparaîtront ici.",
+    "note.depots_serveuses_titre":  "Dépôts des serveuses"
 }

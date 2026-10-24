@@ -1084,5 +1084,8 @@
     "note.valider_remise_caisse":  "Validar declaração de caixa",
     "note.aucune_remise_caisse_d":  "As declarações do recepcionista aparecerão aqui.",
     "note.remise_contestee":  "Declaração contestada — o recepcionista será notificado",
-    "note.aucune_remise_caisse":  "Nenhuma declaração pendente"
+    "note.aucune_remise_caisse":  "Nenhuma declaração pendente",
+    "note.aucun_depot":  "Nenhum depósito pendente",
+    "note.aucun_depot_d":  "Os depósitos das empregadas aparecerão aqui.",
+    "note.depots_serveuses_titre":  "Depósitos das empregadas"
 }

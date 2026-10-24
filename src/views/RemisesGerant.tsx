@@ -22,6 +22,7 @@ export function PanneauRemisesGerant({ terrasseId }: { terrasseId: string }) {
   const db = useDB()
   const [remiseChoisie, setRemiseChoisie] = useState<string | null>(null)
   const [remiseCaisseChoisie, setRemiseCaisseChoisie] = useState<string | null>(null)
+  const [depotChoisi, setDepotChoisi] = useState<string | null>(null)
   const [plafond, setPlafond] = useState<string>(() => {
     const ter = db.terrasses.find((x) => x.id === terrasseId)
     return (ter as any)?.notePlafondCdf ? String((ter as any).notePlafondCdf) : ''
@@ -107,6 +108,36 @@ export function PanneauRemisesGerant({ terrasseId }: { terrasseId: string }) {
         ))
       )}
 
+      {/* ---------- SECTION 2.5 : Dépôts serveuses (depots) ---------- */}
+      <p className="text-xs font-bold uppercase tracking-widest text-sable/50 mt-2">{t('note.depots_serveuses_titre')}</p>
+      {(() => {
+        const depots = db.depots.filter((d) => d.terrasseId === terrasseId && d.statut === 'DECLARE')
+        if (depots.length === 0) {
+          return <Vide icone={<Wallet className="h-8 w-8" />} titre={t('note.aucun_depot')} detail={t('note.aucun_depot_d')} />
+        }
+        return depots.map((d) => {
+          const employe = utilisateurDe(db, d.serveuseId)
+          const ecart = d.declareCdf !== d.montantAttenduCdf || d.declareUsdCentimes !== d.montantAttenduUsdCentimes
+          return (
+            <button key={d.id} onClick={() => setDepotChoisi(d.id)} className="text-left">
+              <Carte classe={`active:bg-white/5 ${ecart ? 'border-danger/40' : ''}`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-white">{employe?.nom ?? '—'}</p>
+                    <p className="text-xs text-sable/55">{ilYA(d.declareLe)} · {d.typeDepot === 'CHAMBRE' ? 'Chambre' : 'Commandes'}</p>
+                  </div>
+                  <div className="text-right">
+                    <Pill ton={ecart ? 'danger' : 'ambre'}>{t('note.a_valider')}</Pill>
+                    <p className="mt-1 text-sm font-bold text-white">
+                      {d.montantAttenduCdf > 0 ? fmtCDF(d.montantAttenduCdf) : ''}{d.montantAttenduCdf > 0 && d.montantAttenduUsdCentimes > 0 ? ' + ' : ''}{d.montantAttenduUsdCentimes > 0 ? fmtUSD(d.montantAttenduUsdCentimes) : ''}
+                    </p>
+                  </div>
+                </div>
+              </Carte>
+            </button>
+          )
+        })
+      })()}
       {/* ---------- SECTION 3 : Paramètres anti-fraude (existant) ---------- */}
       <Carte>
         <p className="mb-2 flex items-center gap-2 font-bold text-white"><Settings className="h-5 w-5 text-ambre" /> {t('note.config_titre')}</p>
