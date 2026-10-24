@@ -172,8 +172,11 @@ export async function chargerTout(): Promise<DB> {
       mode: e.mode, statut: e.statut, creeLe: e.creeLe,
     })),
     remisesCaisse: remisesCaisse.map((r) => ({
-      id: r.id, terrasseId: r.organisationId, // mapping legacy DB→client
-      statut: r.statut, recuCdf: r.recuCdf, recuUsd: r.recuUsd,
+      id: r.id, terrasseId: r.organisationId,
+      employeId: r.employeId,
+      attenduCdf: r.attenduCdf, attenduUsd: r.attenduUsd,
+      recuCdf: r.recuCdf, recuUsd: r.recuUsd,
+      statut: r.statut, motifEcart: r.motifEcart,
       creeLe: r.creeLe,
     })),
     chambres: chambres.map((c) => ({

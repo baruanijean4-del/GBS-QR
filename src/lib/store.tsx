@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // GBS — Magasin de données CONNECTÉ : la base vit sur le
 // serveur (MySQL partagé entre tous les appareils). Le frontend
 // interroge une image filtrée par portée (polling ~4 s) et
@@ -1011,4 +1011,49 @@ export function validerRemiseNote(remiseId: string, recuCdf: number, recuUsd: nu
  *  bénéficiaire (ANNEXE-3 §1.4) ; sur EXPIREE, gérance seule (§2). */
 export function deciderPriseEnChargeStaff(id: string, accepter: boolean) {
   return exec(api.notes.deciderPriseEnCharge.mutate({ id, decision: accepter ? 'ACCEPTEE' : 'REFUSEE' }))
+}
+/** Fusionne les remises de caisse (réceptionniste) et les dépôts (serveuses)
+ *  en une seule liste unifiée, triée par date décroissante. */
+export function toutesLesRemises(db: DB, terrasseId: string) {
+  const remises: Array<{
+    id: string;
+    source: 'REMISE_CAISSE' | 'DEPOT';
+    employeId: string;
+    employeNom: string;
+    attenduCdf: number;
+    attenduUsd: number;
+    recuCdf: number;
+    recuUsd: number;
+    statut: string;
+    motifEcart: string | null;
+    creeLe: string;
+  }> = [];
+
+  // 1. Remises de caisse (réceptionniste)
+  for (const r of (db.remisesCaisse ?? [])) {
+    if (r.terrasseId === terrasseId) {
+      remises.push({
+        id: r.id, source: 'REMISE_CAISSE',
+        employeId: r.id, employeNom: '',
+        attenduCdf: 0, attenduUsd: 0,
+        recuCdf: r.recuCdf, recuUsd: r.recuUsd,
+        statut: r.statut, motifEcart: null, creeLe: r.creeLe,
+      });
+    }
+  }
+
+  // 2. Dépôts (serveuses)
+  for (const d of (db.depots ?? [])) {
+    if (d.terrasseId === terrasseId) {
+      remises.push({
+        id: d.id, source: 'DEPOT',
+        employeId: d.serveuseId, employeNom: '',
+        attenduCdf: d.montantAttenduCdf, attenduUsd: d.montantAttenduUsdCentimes,
+        recuCdf: d.declareCdf, recuUsd: d.declareUsdCentimes,
+        statut: d.statut, motifEcart: null, creeLe: d.declareLe,
+      });
+    }
+  }
+
+  return remises.sort((a, b) => b.creeLe.localeCompare(a.creeLe));
 }

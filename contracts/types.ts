@@ -895,7 +895,10 @@ export interface DB {
   /** Remises de caisse (déclarations réceptionniste/serveuse) */
   remisesCaisse: Array<{
     id: string; terrasseId: string;
-    statut: string; recuCdf: number; recuUsd: number;
+    employeId: string;
+    attenduCdf: number; attenduUsd: number;
+    recuCdf: number; recuUsd: number;
+    statut: string; motifEcart: string | null;
     creeLe: string;
   }>;
   compteurFacture: number;
