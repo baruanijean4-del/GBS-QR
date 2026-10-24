@@ -11,7 +11,7 @@ import { MinusCircle, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { Carte, Feuille, GrosBouton, Money, SaisieNombre, classeSaisie } from './gbs'
 import { fmtCDF, fmtUSD, heureLubu } from '@/lib/format'
-import { depensesDuJour, enregistrerDepense, soldeBoutique, useDB, utilisateurDe, declarerCaisse } from '@/lib/store'
+import { depensesDuJour, enregistrerDepense, soldeBoutique, useDB, utilisateurDe, declarerCaisse, cleSoldeSelonType } from '@/lib/store'
 import { useT } from '@/i18n'
 
 export function BlocCaisse({ terrasseId }: { terrasseId: string }) {
@@ -60,7 +60,7 @@ export function BlocCaisse({ terrasseId }: { terrasseId: string }) {
       <Carte>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs uppercase tracking-widest text-sable/50">{t('caisse.solde')}</p>
+            <p className="text-xs uppercase tracking-widest text-sable/50">{t('caisse.solde', { type: t(cleSoldeSelonType(typeEtablissement)) })}</p>
             <div className="mt-1"><Money cdf={solde.cdf} usd={solde.usdCentimes} gros /></div>
             <p className="mt-1 text-xs text-sable/50">
               {t('caisse.depenses_jour', { montants: fmtCDF(depJourCdf) + (depJourUsd > 0 ? ` + ${fmtUSD(depJourUsd)}` : '') })}

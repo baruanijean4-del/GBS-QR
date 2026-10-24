@@ -257,7 +257,7 @@
     "caisse.montant_usd":  "or USD (0.00)",
     "caisse.motif_manquant":  "State the reason for the expense.",
     "caisse.motif_ph":  "Reason (e.g. Ice for the beers)",
-    "caisse.solde":  "Shop balance",
+    "caisse.solde":  "Balance {type}",
     "caisse.sortie":  "expense",
     "caisse.sorties":  "expenses",
     "caisse.titre_feuille":  "Till expense",
@@ -1087,5 +1087,15 @@
     "note.aucune_remise_caisse":  "No pending declaration",
     "note.aucun_depot":  "No pending deposit",
     "note.aucun_depot_d":  "Waiter deposits will appear here.",
-    "note.depots_serveuses_titre":  "Waiter deposits"
+    "note.depots_serveuses_titre":  "Waiter deposits",
+    "gerant.onglet_finances":  "Finance",
+    "gerant.onglet_pilotage":  "Overview",
+    "gerant.onglet_equipe":  "Team",
+    "gerant.onglet_operations":  "Operations",
+    "caisse.solde_terrasse":  "of the Terrace",
+    "caisse.solde_quincaillerie":  "of the Hardware Store",
+    "caisse.solde_hotel":  "of the Hotel",
+    "caisse.solde_pharmacie":  "of the Pharmacy",
+    "caisse.solde_boutique":  "of the Shop",
+    "caisse.solde_restaurant":  "of the Restaurant"
 }

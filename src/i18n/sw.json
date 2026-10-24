@@ -257,7 +257,7 @@
     "caisse.montant_usd":  "au USD (0,00)",
     "caisse.motif_manquant":  "Weka sababu ya matumizi.",
     "caisse.motif_ph":  "Sababu (mf. Barafu ya bia)",
-    "caisse.solde":  "Salio la duka",
+    "caisse.solde":  "Salio {type}",
     "caisse.sortie":  "matumizi",
     "caisse.sorties":  "matumizi",
     "caisse.titre_feuille":  "Matumizi ya kasha",
@@ -1087,5 +1087,15 @@
     "note.aucune_remise_caisse":  "Hakuna tamko linalosubiri",
     "note.aucun_depot":  "Hakuna amana inayosubiri",
     "note.aucun_depot_d":  "Amana za wahudumu zitaonekana hapa.",
-    "note.depots_serveuses_titre":  "Amana za wahudumu"
+    "note.depots_serveuses_titre":  "Amana za wahudumu",
+    "gerant.onglet_finances":  "Fedha",
+    "gerant.onglet_pilotage":  "Muhtasari",
+    "gerant.onglet_equipe":  "Timu",
+    "gerant.onglet_operations":  "Shughuli",
+    "caisse.solde_terrasse":  "ya Terasi",
+    "caisse.solde_quincaillerie":  "ya Duka la Vifaa",
+    "caisse.solde_hotel":  "ya Hoteli",
+    "caisse.solde_pharmacie":  "ya Duka la Dawa",
+    "caisse.solde_boutique":  "ya Duka",
+    "caisse.solde_restaurant":  "ya Mgahawa"
 }

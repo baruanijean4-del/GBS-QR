@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // GBS — Interface PROPRIÉTAIRE : espace unifié (s'il est aussi
 // gérant), pilotage multi-terrasses, stock/prix (exclusif),
 // équipe et invitations, tables et tranches, abonnement.
@@ -422,7 +422,7 @@ function Pilotage({ terrasse, acteurId, mesTerrasses, moi }: { terrasse: Terrass
       </Carte>
 
       {/* Solde de la boutique + dépenses du jour (caisse) */}
-      <BlocCaisse terrasseId={terrasse.id} />
+            <BlocCaisse terrasseId={terrasse.id} typeEtablissement={terrasse.type} />
 
       {/* Chiffre d'affaires cumulé (toutes dates) */}
       <Carte>

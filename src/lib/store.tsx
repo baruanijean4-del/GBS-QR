@@ -1057,3 +1057,15 @@ export function toutesLesRemises(db: DB, terrasseId: string) {
 
   return remises.sort((a, b) => b.creeLe.localeCompare(a.creeLe));
 }
+
+/** Retourne la clé i18n du solde adaptée au type d'établissement.
+ *  Ex: TERRASSE → "caisse.solde_terrasse", HOTEL → "caisse.solde_hotel" */
+export function cleSoldeSelonType(type: string | undefined | null): string {
+  const t = (type ?? 'TERRASSE').toLowerCase();
+  if (t === 'hotel' || t === 'guest_house') return 'caisse.solde_hotel';
+  if (t === 'restaurant') return 'caisse.solde_restaurant';
+  if (t === 'boutique') return 'caisse.solde_boutique';
+  if (t === 'pharmacie') return 'caisse.solde_pharmacie';
+  if (t === 'quincaillerie') return 'caisse.solde_quincaillerie';
+  return 'caisse.solde_terrasse';
+}

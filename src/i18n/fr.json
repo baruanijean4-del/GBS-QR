@@ -257,7 +257,7 @@
     "caisse.montant_usd":  "ou USD (0,00)",
     "caisse.motif_manquant":  "Indiquez le motif de la dépense.",
     "caisse.motif_ph":  "Motif (ex. Glace pour les bières)",
-    "caisse.solde":  "Solde de la boutique",
+    "caisse.solde":  "Solde {type}",
     "caisse.sortie":  "sortie",
     "caisse.sorties":  "sorties",
     "caisse.titre_feuille":  "Dépense de caisse",
@@ -1087,5 +1087,15 @@
     "note.aucune_remise_caisse":  "Aucune déclaration en attente",
     "note.aucun_depot":  "Aucun dépôt en attente",
     "note.aucun_depot_d":  "Les dépôts des serveuses apparaîtront ici.",
-    "note.depots_serveuses_titre":  "Dépôts des serveuses"
+    "note.depots_serveuses_titre":  "Dépôts des serveuses",
+    "gerant.onglet_finances":  "Finances",
+    "gerant.onglet_pilotage":  "Pilotage",
+    "gerant.onglet_equipe":  "Équipe",
+    "gerant.onglet_operations":  "Opérations",
+    "caisse.solde_terrasse":  "de la Terrasse",
+    "caisse.solde_quincaillerie":  "de la Quincaillerie",
+    "caisse.solde_hotel":  "de l\u0027Hôtel",
+    "caisse.solde_pharmacie":  "de la Pharmacie",
+    "caisse.solde_boutique":  "de la Boutique",
+    "caisse.solde_restaurant":  "du Restaurant"
 }

@@ -257,7 +257,7 @@
     "caisse.montant_usd":  "ou USD (0,00)",
     "caisse.motif_manquant":  "Indique o motivo da despesa.",
     "caisse.motif_ph":  "Motivo (ex. Gelo para as cervejas)",
-    "caisse.solde":  "Saldo da loja",
+    "caisse.solde":  "Saldo {type}",
     "caisse.sortie":  "saída",
     "caisse.sorties":  "saídas",
     "caisse.titre_feuille":  "Despesa de caixa",
@@ -1087,5 +1087,15 @@
     "note.aucune_remise_caisse":  "Nenhuma declaração pendente",
     "note.aucun_depot":  "Nenhum depósito pendente",
     "note.aucun_depot_d":  "Os depósitos das empregadas aparecerão aqui.",
-    "note.depots_serveuses_titre":  "Depósitos das empregadas"
+    "note.depots_serveuses_titre":  "Depósitos das empregadas",
+    "gerant.onglet_finances":  "Finanças",
+    "gerant.onglet_pilotage":  "Visão geral",
+    "gerant.onglet_equipe":  "Equipe",
+    "gerant.onglet_operations":  "Operações",
+    "caisse.solde_terrasse":  "da Esplanada",
+    "caisse.solde_quincaillerie":  "da Ferragem",
+    "caisse.solde_hotel":  "do Hotel",
+    "caisse.solde_pharmacie":  "da Farmácia",
+    "caisse.solde_boutique":  "da Loja",
+    "caisse.solde_restaurant":  "do Restaurante"
 }

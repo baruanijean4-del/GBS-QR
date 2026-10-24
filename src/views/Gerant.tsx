@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // GBS — Interface GÉRANT : tableau de bord, validation des
 // dépôts, stock en lecture seule, QR codes, demandes de stock,
 // assignation serveuse ↔ table, rapport du jour.
@@ -79,28 +79,37 @@ function EspaceGerant({ moi, terrasse }: { moi: Utilisateur; terrasse: Terrasse 
       actif={onglet}
       onChange={setOnglet}
       onglets={[
-        { id: 'tableau', label: t('gerant.onglet_tableau'), icone: <LayoutDashboard className="h-6 w-6" />, badge: alertesNonLues },
-        { id: 'depots', label: t('gerant.onglet_depots'), icone: <Wallet className="h-6 w-6" />, badge: depotsEnAttente },
-        { id: 'stock', label: t('gerant.onglet_stock'), icone: <ClipboardList className="h-6 w-6" /> },
-        ...(aBillards ? [{ id: 'billards', label: t('billard.onglet_gestion'), icone: <Target className="h-6 w-6" /> }] : []),
-        ...(aChambres ? [{ id: 'hotel', label: t('hotel.onglet'), icone: <BedDouble className="h-6 w-6" /> }] : []),
-        { id: 'qr', label: t('gerant.onglet_qr'), icone: <QrCode className="h-6 w-6" /> },
-        { id: 'serveuses', label: t('gerant.onglet_serveuses'), icone: <Star className="h-6 w-6" /> },
-        { id: 'notes', label: t('gerant.onglet_notes'), icone: <ReceiptText className="h-6 w-6" /> },
-        { id: 'remises', label: t('gerant.onglet_remises'), icone: <HandCoins className="h-6 w-6" /> },
-        ...(aTraiteur ? [{ id: 'traiteur', label: t('gerant.onglet_traiteur'), icone: <ChefHat className="h-6 w-6" /> }] : []),
+        { id: 'pilotage', label: t('gerant.onglet_pilotage'), icone: <LayoutDashboard className="h-6 w-6" />, badge: alertesNonLues },
+        { id: 'operations', label: t('gerant.onglet_operations'), icone: <BedDouble className="h-6 w-6" /> },
+        { id: 'equipe', label: t('gerant.onglet_equipe'), icone: <Star className="h-6 w-6" /> },
+        { id: 'finances', label: t('gerant.onglet_finances'), icone: <HandCoins className="h-6 w-6" />, badge: depotsEnAttente },
       ]}
     >
-      {onglet === 'tableau' && <TableauGerant terrasseId={terrasse.id} alertesNonLues={alertesNonLues} />}
-      {onglet === 'billards' && aBillards && <PanneauBillards terrasseId={terrasse.id} avecConfig />}
-      {onglet === 'hotel' && aChambres && <PanneauHotel terrasseId={terrasse.id} mode="direction" />}
-      {onglet === 'depots' && <DepotsGerant terrasseId={terrasse.id} acteurId={moi.id} />}
-      {onglet === 'stock' && <StockGerant terrasseId={terrasse.id} />}
-      {onglet === 'qr' && <QRGerant terrasseId={terrasse.id} />}
-      {onglet === 'serveuses' && <ServeusesGerant terrasseId={terrasse.id} />}
-      {onglet === 'notes' && <PanneauNotes terrasseId={terrasse.id} />}
-      {onglet === 'remises' && <PanneauRemisesGerant terrasseId={terrasse.id} />}
-      {onglet === 'traiteur' && aTraiteur && <PanneauPlansTraiteur terrasseId={terrasse.id} />}
+      {/* 1. PILOTAGE */}
+      {onglet === 'pilotage' && <TableauGerant terrasseId={terrasse.id} alertesNonLues={alertesNonLues} />}
+      {/* 2. OPERATIONS */}
+      {onglet === 'operations' && (
+        <div className="flex flex-col gap-4">
+          {aChambres && <PanneauHotel terrasseId={terrasse.id} mode="direction" />}
+          <StockGerant terrasseId={terrasse.id} />
+          <QRGerant terrasseId={terrasse.id} />
+        </div>
+      )}
+      {/* 3. EQUIPE */}
+      {onglet === 'equipe' && (
+        <div className="flex flex-col gap-4">
+          <ServeusesGerant terrasseId={terrasse.id} />
+          {aBillards && <PanneauBillards terrasseId={terrasse.id} avecConfig />}
+          {aTraiteur && <PanneauPlansTraiteur terrasseId={terrasse.id} />}
+        </div>
+      )}
+      {/* 4. FINANCES */}
+      {onglet === 'finances' && (
+        <div className="flex flex-col gap-4">
+          <PanneauRemisesGerant terrasseId={terrasse.id} />
+          <PanneauNotes terrasseId={terrasse.id} />
+        </div>
+      )}
     </CoquilleRole>
   )
 }
@@ -137,7 +146,7 @@ function TableauGerant({ terrasseId, alertesNonLues }: { terrasseId: string; ale
       </div>
 
       {/* Solde de la boutique + dépenses du jour (caisse) */}
-      <BlocCaisse terrasseId={terrasseId} />
+      <BlocCaisse terrasseId={terrasseId} afficherDeclaration={false} typeEtablissement={terrasse?.type} />
 
       {impayees.length > 0 && (
         <div className="flex items-center gap-3 rounded-2xl border border-ambre/40 bg-ambre/10 px-4 py-3">
