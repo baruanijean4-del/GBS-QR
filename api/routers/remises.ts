@@ -12,6 +12,7 @@ import * as s from "@db/schema";
 import { createRouter, protegee } from "../middleware";
 import { alerter, db, erreur, journaliser, rolesSurDb } from "../gbsRouter";
 import { maintenant, uid } from "../gbsUtils";
+import { exigerProprietaireSiRemiseDeGerantDb } from "./notes";
 import type { RoleActif } from "@contracts/types";
 
 const SEUIL_CDF_DEFAUT = 5000;
@@ -177,6 +178,7 @@ export const remisesRouter = createRouter({
       }
 
       const { role, terrasseId } = await exigerGeranceRemise(acteurId, remise.organisationId, "Validation de la caisse");
+      await exigerProprietaireSiRemiseDeGerantDb(acteurId, remise.employeId, remise.organisationId);
 
       // Écart = comptage du gérant vs attendu calculé par le serveur.
       const ecartCdf = input.recuCdf - remise.attenduCdf;
@@ -201,6 +203,10 @@ export const remisesRouter = createRouter({
         await tx.update(s.encaissements)
           .set({ statut: aEcart ? "ECART" : "REMIS", remisLe: le })
           .where(eq(s.encaissements.remiseId, remise.id));
+        // Versement du gérant : le cash arrive chez le propriétaire (VERSE).
+        await tx.update(s.encaissements)
+          .set({ statut: aEcart ? "ECART" : "VERSE", remisLe: le })
+          .where(eq(s.encaissements.versementId, remise.id));
       });
 
       if (aEcart) {
@@ -235,6 +241,7 @@ export const remisesRouter = createRouter({
       if (remise.employeId === acteurId) erreur("Auto-contestation interdite.");
 
       const { role, terrasseId } = await exigerGeranceRemise(acteurId, remise.organisationId, "Validation de la caisse");
+      await exigerProprietaireSiRemiseDeGerantDb(acteurId, remise.employeId, remise.organisationId);
       const le = maintenant();
 
       const [maj] = await db().update(s.remisesCaisse)
@@ -245,6 +252,8 @@ export const remisesRouter = createRouter({
       // Le cash reste suivi : marqué ECART (jamais libéré sans décision).
       await db().update(s.encaissements).set({ statut: "ECART" })
         .where(eq(s.encaissements.remiseId, remise.id));
+      await db().update(s.encaissements).set({ statut: "ECART" })
+        .where(eq(s.encaissements.versementId, remise.id));
 
       await journaliser(acteurId, role, "REMISE_CONTESTEE",
         `Remise ${input.remiseId} contestee : ${input.motifContest}`, { terrasseId });

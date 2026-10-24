@@ -203,7 +203,7 @@ describe("Payer pour quelqu'un — voie serveuse", () => {
     expect(lignes.every((l) => l.priseEnChargeId === id)).toBe(true);
     // La serveuse encaisse le payeur présent (§5 : encaissement cash existant)
     const r = await serveuse.notes.encaisserNote({
-      noteId: benef.noteId, montantCdf: 4000, montantUsd: 0, mode: "CASH", pourboireCdf: 0, pourboireUsd: 0,
+      noteId: benef.noteId, montantCdf: 4000, montantUsd: 0, pourboireCdf: 0, pourboireUsd: 0,
     });
     expect(r.reglee).toBe(true);
   });

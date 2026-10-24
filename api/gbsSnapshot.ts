@@ -171,6 +171,7 @@ export async function chargerTout(): Promise<DB> {
       encaisseParId: e.encaisseParId,
       montantCdf: e.montantCdf, montantUsd: e.montantUsd,
       mode: e.mode, statut: e.statut, creeLe: e.creeLe,
+      versementId: e.versementId ?? null,
     })),
     remisesCaisse: remisesCaisse.map((r) => ({
       id: r.id, terrasseId: r.organisationId,

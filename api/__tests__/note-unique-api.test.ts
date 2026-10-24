@@ -221,19 +221,19 @@ describe("Note unique — paiement et suivi de l'argent physique", () => {
 
     // Acompte de 2000 FC — la note reste ouverte
     const r1 = await serveuse.notes.encaisserNote({
-      noteId, montantCdf: 2000, montantUsd: 0, mode: "CASH", pourboireCdf: 0, pourboireUsd: 0,
+      noteId, montantCdf: 2000, montantUsd: 0, pourboireCdf: 0, pourboireUsd: 0,
     });
     expect(r1.reglee).toBe(false);
     expect(r1.resteCdf).toBe(3000);
 
     // Double encaissement impossible au-delà du reste (§5.9)
     await expect(serveuse.notes.encaisserNote({
-      noteId, montantCdf: 3001, montantUsd: 0, mode: "CASH", pourboireCdf: 0, pourboireUsd: 0,
+      noteId, montantCdf: 3001, montantUsd: 0, pourboireCdf: 0, pourboireUsd: 0,
     })).rejects.toThrow(/reste dû/);
 
     // Solde + pourboire À PART (§5.4)
     const r2 = await serveuse.notes.encaisserNote({
-      noteId, montantCdf: 3000, montantUsd: 0, mode: "CASH", pourboireCdf: 500, pourboireUsd: 0,
+      noteId, montantCdf: 3000, montantUsd: 0, pourboireCdf: 500, pourboireUsd: 0,
     });
     expect(r2.reglee).toBe(true);
 
@@ -257,24 +257,19 @@ describe("Note unique — paiement et suivi de l'argent physique", () => {
     expect(apres.historique[0]?.statut).toBe("REGLEE");
   });
 
-  it("le mobile money exige une référence UNIQUE (§5.7)", async () => {
+  it("seul le personnel de caisse encaisse : ni gérant ni propriétaire", async () => {
     const sess = await sessionClient("Fifi");
     await commander(sess.id, "cle_test_not_5");
     const noteId = (await anonyme.notes.voirMaNote({ clientSessionId: sess.id })).note?.id ?? "";
-    await serveuse.notes.encaisserNote({
-      noteId, montantCdf: 5000, montantUsd: 0, mode: "MOBILE_MONEY",
-      referenceMobile: "AMTESTNOT001", pourboireCdf: 0, pourboireUsd: 0,
-    });
-    const sess2 = await sessionClient("Gaby");
-    await commander(sess2.id, "cle_test_not_6");
-    const note2 = (await anonyme.notes.voirMaNote({ clientSessionId: sess2.id })).note?.id ?? "";
-    await expect(serveuse.notes.encaisserNote({
-      noteId: note2, montantCdf: 5000, montantUsd: 0, mode: "MOBILE_MONEY",
-      referenceMobile: "AMTESTNOT001", pourboireCdf: 0, pourboireUsd: 0,
-    })).rejects.toThrow(/déjà été enregistrée/);
-    // Le mobile money n'est pas du cash physique : rien EN_MAIN pour cette part
+    const proprio = appRouter.createCaller({ session: { utilisateurId: PROP } } as never);
+    for (const appelant of [gerant, proprio]) {
+      await expect(appelant.notes.encaisserNote({
+        noteId, montantCdf: 5000, montantUsd: 0, pourboireCdf: 0, pourboireUsd: 0,
+      })).rejects.toThrow(/rôle requis/);
+    }
+    // Rien n'a été encaissé : la serveuse n'a toujours que le cash d'Émeraude
     const caisse = await serveuse.notes.maCaisse();
-    expect(caisse.enMainCdf).toBe(5000); // uniquement les cash de Émeraude
+    expect(caisse.enMainCdf).toBe(5000);
   });
 
   it("remise de caisse : attendu vs reçu, écart = alerte immédiate (§5.6)", async () => {
@@ -301,12 +296,44 @@ describe("Note unique — paiement et suivi de l'argent physique", () => {
     expect(apres.enMainCdf).toBe(0);
   });
 
+  it("chaîne de l'argent : serveuse → gérant → propriétaire (versement en personne)", async () => {
+    const proprio = appRouter.createCaller({ session: { utilisateurId: PROP } } as never);
+    const sess = await sessionClient("Gaby");
+    await commander(sess.id, "cle_test_not_chaine");
+    const noteId = (await anonyme.notes.voirMaNote({ clientSessionId: sess.id })).note?.id ?? "";
+    await serveuse.notes.encaisserNote({ noteId, montantCdf: 5000, montantUsd: 0, pourboireCdf: 0, pourboireUsd: 0 });
+
+    // 1. La serveuse remet au gérant, qui valide : le cash est chez le gérant (REMIS)
+    const remise = await serveuse.notes.remettreCaisse({ terrasseId: ETAB });
+    await gerant.notes.validerRemise({ remiseId: remise.id, recuCdf: 5000, recuUsd: 0, motif: "" });
+    const avant = await gerant.notes.aVerser({ terrasseId: ETAB });
+    expect(avant.cdf).toBe(5000);
+
+    // 2. Le gérant déclare son versement ; un seul à la fois
+    const versement = await gerant.notes.verserAuProprietaire({ terrasseId: ETAB });
+    expect(versement.attenduCdf).toBe(5000);
+    await expect(gerant.notes.verserAuProprietaire({ terrasseId: ETAB })).rejects.toThrow(/en attente/);
+    // Ni la serveuse ni le gérant ne valident son propre versement : le propriétaire seul
+    await expect(gerant.notes.validerRemise({
+      remiseId: versement.id, recuCdf: 5000, recuUsd: 0, motif: "",
+    })).rejects.toThrow(/propre remise/);
+
+    // 3. Le propriétaire confirme : le cash est VERSE
+    const ok = await proprio.notes.validerRemise({ remiseId: versement.id, recuCdf: 5000, recuUsd: 0, motif: "" });
+    expect(ok.ecart).toBe(false);
+    const lignes = await getDb().select().from(s.encaissements)
+      .where(eq(s.encaissements.versementId, versement.id));
+    expect(lignes.length).toBeGreaterThan(0);
+    expect(lignes.every((e) => e.statut === "VERSE")).toBe(true);
+    expect((await gerant.notes.aVerser({ terrasseId: ETAB })).cdf).toBe(0);
+  });
+
   it("rôles : la cuisine ne peut pas encaisser (§5.1)", async () => {
     const sess = await sessionClient("Henri");
     await commander(sess.id, "cle_test_not_7");
     const noteId = (await anonyme.notes.voirMaNote({ clientSessionId: sess.id })).note?.id ?? "";
     await expect(cuisine.notes.encaisserNote({
-      noteId, montantCdf: 5000, montantUsd: 0, mode: "CASH", pourboireCdf: 0, pourboireUsd: 0,
+      noteId, montantCdf: 5000, montantUsd: 0, pourboireCdf: 0, pourboireUsd: 0,
     })).rejects.toThrow(/rôle requis/);
   });
 
@@ -360,7 +387,7 @@ describe("Note unique — plafond anti-fraude et billard « sur note »", () => 
 
     // Règlement de la note → le token est soldé automatiquement
     await serveuse.notes.encaisserNote({
-      noteId: vue.note?.id ?? "", montantCdf: 5000, montantUsd: 0, mode: "CASH",
+      noteId: vue.note?.id ?? "", montantCdf: 5000, montantUsd: 0,
       pourboireCdf: 0, pourboireUsd: 0,
     });
     const [t2] = await getDb().select().from(s.tokensBillard).where(eq(s.tokensBillard.id, tok.id)).limit(1);
@@ -400,7 +427,7 @@ describe("Note unique — chambre d'hôtel (folio)", () => {
         sql`${s.notes.sejourId} IS NOT NULL`)).limit(1);
     expect(note?.sejourId).not.toBeNull();
     await expect(serveuse.notes.encaisserNote({
-      noteId: note?.id ?? "", montantCdf: 1, montantUsd: 0, mode: "CASH", pourboireCdf: 0, pourboireUsd: 0,
+      noteId: note?.id ?? "", montantCdf: 1, montantUsd: 0, pourboireCdf: 0, pourboireUsd: 0,
     })).rejects.toThrow(/rôle requis/);
     // La serveuse ne voit même pas la note de chambre dans sa liste
     const listeServeuse = await serveuse.notes.notesOuvertes({ terrasseId: ETAB });

@@ -64,7 +64,7 @@ export const comptabiliteRouter = createRouter({
         tout.push({
           tri: t.payeLe ?? "", montant: t.prixCdf,
           csv: csvLigne([heureDe(t.payeLe), "BILLARD", `Token #${t.numero} (${t.prenom})`,
-            t.prixCdf, t.referenceMobile ? `AIRTEL_MONEY ${t.referenceMobile}` : "CASH", t.payePar]),
+            t.prixCdf, "CASH", t.payePar]),
         });
       }
       for (const sj of sejoursClotures) {

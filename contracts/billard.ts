@@ -71,22 +71,6 @@ export interface TokenBillard {
   referenceMobile: string | null;
 }
 
-/** Référence de transaction Airtel Money déclarée par le client
- *  (flux manuel : le client paie au numéro de l'établissement puis
- *  déclare la référence reçue par SMS ; le caissier valide après
- *  avoir vérifié sur son propre téléphone). Format accepté : 6 à 30
- *  caractères alphanumériques, points et tirets admis (ex.
- *  « CI251019.1432.A12345 », « 240875123 »). */
-export function referenceMobileValide(ref: string): boolean {
-  return /^[A-Za-z0-9][A-Za-z0-9.-]{4,28}[A-Za-z0-9]$/.test(ref.trim());
-}
-
-/** Normalise une référence déclarée : trim + majuscules (l'unicité
- *  en base est insensible à la casse de saisie). */
-export function normaliserReferenceMobile(ref: string): string {
-  return ref.trim().toUpperCase();
-}
-
 /** Partie vincaire contre challenger (miroir de parties_billard). */
 export interface PartieBillard {
   id: string;

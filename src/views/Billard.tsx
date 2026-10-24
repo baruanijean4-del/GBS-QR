@@ -49,7 +49,6 @@ export function OngletBillardClient({ token, sessionId }: { token: string; sessi
   const [confirmeAchat, setConfirmeAchat] = useState(false)
   const [confirmeAnnulation, setConfirmeAnnulation] = useState(false)
   const [confirmeDefaite, setConfirmeDefaite] = useState(false)
-  const [refMobile, setRefMobile] = useState('')
   const file = trpc.billard.voirFile.useQuery(
     { token, clientSessionId: sessionId },
     { refetchInterval: 4000 }, // la file bouge sans recharger la page
@@ -69,10 +68,8 @@ export function OngletBillardClient({ token, sessionId }: { token: string; sessi
 
   const acheter = async () => {
     try {
-      // Référence Airtel Money déclarée (facultatif — vide = cash)
-      await acheterTokenBillard(token, sessionId, refMobile.trim() || undefined)
+      await acheterTokenBillard(token, sessionId)
       setConfirmeAchat(false)
-      setRefMobile('')
       toast.success(t('billard.ticket_cree'))
       void file.refetch()
     } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
@@ -422,11 +419,6 @@ function CarteBillardGestion({ table }: { table: TableT }) {
                     )}
                   </p>
                   <PillStatut statut={tk.statut} />
-                  {tk.statut === 'ATTENTE_PAIEMENT' && tk.referenceMobile && (
-                    <p className="mt-0.5 font-mono text-xs font-bold text-ambre">
-                      {t('billard.ref_airtel', { ref: tk.referenceMobile })}
-                    </p>
-                  )}
                 </div>
                 {tk.statut === 'ATTENTE_PAIEMENT' && (
                   <button

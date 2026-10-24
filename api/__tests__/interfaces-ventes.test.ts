@@ -213,7 +213,9 @@ describe("encaissement cash (commande payée avant la suivante)", () => {
   it("une commande payée ne peut plus être annulée par l'application", async () => {
     // Prépaiement comptoir : commande2 est EN_ATTENTE et déjà encaissée
     const appelantGer = appRouter.createCaller({ session: { utilisateurId: GER } } as never);
-    await expect(appelantGer.gbs.marquerPayee({ commandeId: commande2Id })).resolves.toEqual({ ok: true });
+    // Séparation des tâches : le gérant ne touche pas l'argent d'un client
+    await expect(appelantGer.gbs.marquerPayee({ commandeId: commande2Id })).rejects.toThrow(/rôle requis/);
+    await expect(appelantServ.gbs.marquerPayee({ commandeId: commande2Id })).resolves.toEqual({ ok: true });
     await expect(
       appelantGer.gbs.annulerCommandeStaff({ commandeId: commande2Id, motif: "Test" }),
     ).rejects.toThrow(/encaissée/);

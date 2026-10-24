@@ -178,10 +178,9 @@ export const hotelRouter = createRouter({
        *  Sans paiement, la note reste OUVERTE (impayé visible) et se règle
        *  ensuite depuis l'écran Notes avec le bon mode de paiement. */
       paiement: z.object({
-        mode: z.enum(["CASH", "MOBILE_MONEY"]),
+        mode: z.literal("CASH"),
         montantCdf: z.number().int().min(0),
         montantUsd: z.number().int().min(0),
-        referenceMobile: z.string().max(30).nullable().optional(),
       }).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -248,10 +247,9 @@ export const hotelRouter = createRouter({
           await encaisserNoteDb({
             noteId: noteSejour.id, acteurId,
             montantCdf: input.paiement.montantCdf, montantUsd: input.paiement.montantUsd,
-            mode: input.paiement.mode, referenceMobile: input.paiement.referenceMobile ?? null,
           });
           await journaliser(acteurId, role, "HOTEL_REGLEMENT_CHECKOUT",
-            `Chambre ${chambre.numero} : ${input.paiement.montantCdf} FC / ${input.paiement.montantUsd} ¢ en ${input.paiement.mode}`,
+            `Chambre ${chambre.numero} : ${input.paiement.montantCdf} FC / ${input.paiement.montantUsd} ¢ (cash)`,
             { terrasseId: sejour.terrasseId });
         } catch (e) {
           paiementRefuse = e instanceof Error ? e.message : "Paiement refusé.";

@@ -808,17 +808,14 @@ export function modifierTarif(plan: string, tranche: string, prixCentimes: numbe
 
 // ---------- Billard Vincaire (étape 3 annexe) ----------
 
-/** Client : achète un token sur le billard scanné. Cash par défaut ;
- *  si referenceMobile est fourni, c'est la référence Airtel Money
- *  déclarée par le client (flux manuel — le caissier la vérifie sur
- *  son téléphone avant de valider ; unique par établissement). */
 /** Billard : classement public des meilleurs joueurs (par série de victoires) */
 export function classementJoueursBillard(terrasseId: string) {
   return api.billard.classementJoueurs.query({ terrasseId })
 }
 
-export function acheterTokenBillard(token: string, clientSessionId: string, referenceMobile?: string) {
-  return exec(api.billard.acheterToken.mutate({ token, clientSessionId, referenceMobile }))
+/** Client : achète un token sur le billard scanné (paiement cash au personnel). */
+export function acheterTokenBillard(token: string, clientSessionId: string) {
+  return exec(api.billard.acheterToken.mutate({ token, clientSessionId }))
 }
 
 /** Client : annule son token (avant d'entrer en jeu) */
@@ -987,13 +984,12 @@ export function deciderPriseEnChargeClienteNote(clientSessionId: string, id: str
   return exec(api.notes.deciderPriseEnChargeCliente.mutate({ clientSessionId, id, decision: accepter ? 'ACCEPTEE' : 'REFUSEE' }))
 }
 
-/** Staff : encaisse (partiellement ou totalement) une note — CASH ou
- *  MOBILE_MONEY, pourboire hors CA (§5). */
+/** Personnel de caisse : encaisse (partiellement ou totalement) une note en
+ *  cash, pourboire hors CA (§5). */
 export function encaisserNote(
-  noteId: string, montantCdf: number, montantUsd: number,
-  mode: 'CASH' | 'MOBILE_MONEY', referenceMobile?: string, pourboireCdf = 0, pourboireUsd = 0,
+  noteId: string, montantCdf: number, montantUsd: number, pourboireCdf = 0, pourboireUsd = 0,
 ) {
-  return exec(api.notes.encaisserNote.mutate({ noteId, montantCdf, montantUsd, mode, referenceMobile, pourboireCdf, pourboireUsd }))
+  return exec(api.notes.encaisserNote.mutate({ noteId, montantCdf, montantUsd, pourboireCdf, pourboireUsd }))
 }
 
 /** Staff : déclare la remise de son cash EN_MAIN au receveur (§5.5). */
@@ -1003,6 +999,11 @@ export function remettreCaisseNote(terrasseId: string) {
 
 /** Receveur : valide une remise de caisse avec les montants COMPTÉS
  *  (l'écart déclenche l'alerte propriétaire, §5.5). */
+/** Gérant : déclare le cash qu'il remet EN PERSONNE au propriétaire */
+export function verserAuProprietaire(terrasseId: string) {
+  return exec(api.notes.verserAuProprietaire.mutate({ terrasseId }))
+}
+
 export function validerRemiseNote(remiseId: string, recuCdf: number, recuUsd: number, motif = '') {
   return exec(api.notes.validerRemise.mutate({ remiseId, recuCdf, recuUsd, motif }))
 }
@@ -1074,9 +1075,20 @@ export function cleSoldeSelonType(type: string | undefined | null): string {
  *  les déclarations en attente et les notes impayées.
  *  Règle GBS : « Là où l'argent disparaît, GBS le voit. » */
 export function ouEstLArgent(db: DB, terrasseId: string) {
+  const orgId = db.terrasses.find((x) => x.id === terrasseId)?.organisationId
+  const dansEtab = (cle: string) => cle === terrasseId || cle === orgId
   const cashParEmploye: Record<string, { nom: string; role: string; cdf: number; usd: number }> = {};
+  let chezGerantCdf = 0
+  let chezGerantUsd = 0
   for (const e of (db.encaissements ?? [])) {
-    if (e.terrasseId !== terrasseId || e.statut !== 'EN_MAIN') continue;
+    if (!dansEtab(e.terrasseId)) continue;
+    // Cash remis au gérant, pas encore versé au propriétaire
+    if (e.statut === 'REMIS' && e.mode === 'CASH' && !e.versementId) {
+      chezGerantCdf += e.montantCdf
+      chezGerantUsd += e.montantUsd
+      continue
+    }
+    if (e.statut !== 'EN_MAIN') continue;
     const u = utilisateurDe(db, e.encaisseParId);
     if (!u) continue;
     if (!cashParEmploye[u.id]) {
@@ -1087,7 +1099,7 @@ export function ouEstLArgent(db: DB, terrasseId: string) {
   }
 
   const declarationsEnAttente = (db.remisesCaisse ?? []).filter(
-    (r) => r.terrasseId === terrasseId && r.statut === 'EN_ATTENTE'
+    (r) => dansEtab(r.terrasseId) && r.statut === 'EN_ATTENTE'
   ).length + (db.depots ?? []).filter(
     (d) => d.terrasseId === terrasseId && d.statut === 'DECLARE'
   ).length;
@@ -1100,6 +1112,7 @@ export function ouEstLArgent(db: DB, terrasseId: string) {
 
   return {
     cashParEmploye: Object.values(cashParEmploye).sort((a, b) => b.cdf - a.cdf),
+    chezGerant: { cdf: chezGerantCdf, usd: chezGerantUsd },
     declarationsEnAttente,
     notesImpayees: { nb: notesImpayees.length, cdf: notesImpayeesCdf, usd: notesImpayeesUsd },
   };

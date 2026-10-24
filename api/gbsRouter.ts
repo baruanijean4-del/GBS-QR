@@ -16,7 +16,7 @@ import type { ActionSensible, Alerte, EntreeAnnuaire, Portee, RoleActif, RoleEta
 import { aTablesDeSalle, CATEGORIES_PAR_TYPE, categorieParLibelle, fraisInstallationPour, tousLesTypes, typeProduitParDefaut, TYPES_ZONE_UNIQUE } from "@contracts/types";
 import { createRouter, protegee, publicQuery } from "./middleware";
 import {
-  ajouterLignesNoteDb, assurerClientDb, clientDeSessionDb, encaisserNoteDb, exigerTelephoneSiGrosseNoteDb, noteOuverteDb,
+  ajouterLignesNoteDb, assurerClientDb, clientDeSessionDb, encaisserNoteDb, exigerRoleCaisseDb, exigerTelephoneSiGrosseNoteDb, noteOuverteDb,
   sommesNoteDb, synchroniserLignesCommandeDb,
 } from "./routers/notes";
 import { espaceDepuisQr } from "@contracts/notes";
@@ -885,6 +885,12 @@ export const gbsRouter = createRouter({
       const c = await commandePourRoleDb(input.commandeId, acteurId);
       if (c.statut === "ANNULEE") erreur("Cette commande est annulée.");
       if (c.payeeLe) return { ok: true as const };
+      // Encaisser = toucher du cash : personnel de caisse seulement (ni gérant ni
+      // propriétaire). Vérifié AVANT de marquer la commande payée.
+      const [terrasseCmd] = await db().select({ organisationId: s.terrasses.organisationId })
+        .from(s.terrasses).where(eq(s.terrasses.id, c.terrasseId)).limit(1);
+      if (!terrasseCmd) erreur("Établissement introuvable.");
+      await exigerRoleCaisseDb(acteurId, terrasseCmd.organisationId, false);
       // Encaissement atomique : la condition « payee_le IS NULL » est
       // DANS le UPDATE — deux encaissements simultanés (double-tap,
       // deux serveuses) ne peuvent pas passer tous les deux : le second
@@ -909,7 +915,7 @@ export const gbsRouter = createRouter({
         const cdf = Math.min(c.totalCdf, sommes.resteCdf);
         const usd = Math.min(c.totalUsd, sommes.resteUsd);
         if (cdf > 0 || usd > 0) {
-          await encaisserNoteDb({ noteId: ligneNote.noteId, acteurId, montantCdf: cdf, montantUsd: usd, mode: "CASH" });
+          await encaisserNoteDb({ noteId: ligneNote.noteId, acteurId, montantCdf: cdf, montantUsd: usd });
         }
       }
       return { ok: true as const };

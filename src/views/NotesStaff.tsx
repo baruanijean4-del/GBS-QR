@@ -1,7 +1,7 @@
 // ============================================================
 // GBS — Panneau « Notes » du personnel (ANNEXE-2 §5) :
-//  * notes ouvertes de l'organisation à encaisser (CASH → EN_MAIN,
-//    MOBILE_MONEY → REMIS d'office), acomptes et pourboires ;
+//  * notes ouvertes de l'organisation à encaisser en CASH (→ EN_MAIN),
+//    acomptes et pourboires ;
 //  * « Ma caisse » : cash EN_MAIN + remise au receveur (§5.5) ;
 //  * prises en charge en attente : la serveuse enregistre la décision
 //    de la bénéficiaire — jamais l'identité du payeur (ANNEXE-3).
@@ -159,18 +159,16 @@ function EncaissementNote({ note, onFait }: { note: NoteVue; onFait: () => void 
   const [cdf, setCdf] = useState(String(note.resteCdf || ''))
   const [usd, setUsd] = useState(note.resteUsd > 0 ? (note.resteUsd / 100).toFixed(2) : '')
   const [pourboire, setPourboire] = useState('')
-  const [refMobile, setRefMobile] = useState('')
-  const [mode, setMode] = useState<'CASH' | 'MOBILE_MONEY'>('CASH')
 
   const detail = trpc.notes.voirNote.useQuery({ noteId: note.id })
 
   const encaisser = async () => {
     const mCdf = parseInt(cdf) || 0
     const mUsd = Math.round((parseFloat(usd.replace(',', '.')) || 0) * 100)
-    const pCdf = mode === 'CASH' ? parseInt(pourboire) || 0 : 0
+    const pCdf = parseInt(pourboire) || 0
     if (mCdf <= 0 && mUsd <= 0) { toast.error(t('note.montant_requis')); return }
     try {
-      const r = await encaisserNote(note.id, mCdf, mUsd, mode, refMobile.trim() || undefined, pCdf, 0)
+      const r = await encaisserNote(note.id, mCdf, mUsd, pCdf, 0)
       toast.success(t(r.reglee ? 'note.note_soldee' : 'note.acompte_enregistre'))
       onFait()
     } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
@@ -193,17 +191,6 @@ function EncaissementNote({ note, onFait }: { note: NoteVue; onFait: () => void 
         <Montants cdf={note.resteCdf} usd={note.resteUsd} gras />
       </p>
       <div className="flex gap-2">
-        {(['CASH', 'MOBILE_MONEY'] as const).map((m) => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            className={`flex-1 rounded-2xl py-2.5 text-sm font-bold ${mode === m ? 'bg-ambre text-sur-ambre' : 'bg-white/8 text-sable'}`}
-          >
-            {m === 'CASH' ? t('note.mode_cash') : t('note.mode_mobile')}
-          </button>
-        ))}
-      </div>
-      <div className="flex gap-2">
         <div className="flex-1">
           <SaisieNombre valeur={cdf} onChange={setCdf} placeholder={t('note.montant_cdf')} />
         </div>
@@ -218,18 +205,7 @@ function EncaissementNote({ note, onFait }: { note: NoteVue; onFait: () => void 
           />
         </div>
       </div>
-      {mode === 'MOBILE_MONEY' && (
-        <input
-          className={classeSaisie}
-          value={refMobile}
-          onChange={(e) => setRefMobile(e.target.value)}
-          placeholder={t('note.ref_mobile_ph')}
-          aria-label={t('note.ref_mobile_ph')}
-        />
-      )}
-      {mode === 'CASH' && (
-        <SaisieNombre valeur={pourboire} onChange={setPourboire} placeholder={t('note.pourboire_ph')} />
-      )}
+      <SaisieNombre valeur={pourboire} onChange={setPourboire} placeholder={t('note.pourboire_ph')} />
       <GrosBouton onClick={() => void encaisser()}>{t('note.encaisser')}</GrosBouton>
     </div>
   )

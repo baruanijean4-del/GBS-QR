@@ -201,7 +201,7 @@ describe("concurrence — encaissement", () => {
     const debut = maintenant();
     const resultats = await Promise.allSettled([
       appelantServ.gbs.marquerPayee({ commandeId: cmd.id }),
-      appelantGer.gbs.marquerPayee({ commandeId: cmd.id }),
+      appelantServ.gbs.marquerPayee({ commandeId: cmd.id }),
     ]);
     // Les deux répondent ok (idempotent)…
     for (const r of resultats) expect(r.status).toBe("fulfilled");

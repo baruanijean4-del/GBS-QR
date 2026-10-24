@@ -7,8 +7,6 @@
 
 import { describe, expect, it } from 'vitest'
 import {
-  normaliserReferenceMobile,
-  referenceMobileValide,
   CONFIG_BILLARD_DEFAUT,
   appelExpire,
   dureeMoyennePartiesMin,
@@ -88,22 +86,5 @@ describe('appelExpire — délai de présence après appel', () => {
   it('dans le délai → encore valide ; dépassé → absent', () => {
     expect(appelExpire(appele, 3, '2026-01-01T20:02:00.000Z')).toBe(false)
     expect(appelExpire(appele, 3, '2026-01-01T20:03:30.000Z')).toBe(true)
-  })
-})
-
-describe('referenceMobileValide — référence Airtel Money déclarée (boucle 6)', () => {
-  it('formats acceptés : alphanumérique 6-30, points et tirets', () => {
-    expect(referenceMobileValide('CI251019.1432.A12345')).toBe(true)
-    expect(referenceMobileValide('240875123')).toBe(true)
-    expect(referenceMobileValide('AM-99281-X7')).toBe(true)
-  })
-  it('formats refusés : trop court, espaces, symboles', () => {
-    expect(referenceMobileValide('12345')).toBe(false)
-    expect(referenceMobileValide('REF AVEC ESPACE')).toBe(false)
-    expect(referenceMobileValide('ref#12345')).toBe(false)
-    expect(referenceMobileValide('')).toBe(false)
-  })
-  it('normalisation : trim + majuscules (unicité insensible à la casse)', () => {
-    expect(normaliserReferenceMobile('  ci251019.a12345 ')).toBe('CI251019.A12345')
   })
 })

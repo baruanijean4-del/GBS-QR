@@ -792,6 +792,9 @@ export const encaissements = pgTable(
     referenceMobile: varchar("reference_mobile", { length: 30 }),
     statut: varchar("statut", { length: 10 }).notNull().default("EN_MAIN"),
     remiseId: varchar("remise_id", { length: 40 }),
+    /** Versement (remise du GÉRANT au propriétaire) qui couvre ce cash une
+     *  fois remis au gérant. NULL = pas encore versé. Migration 0020. */
+    versementId: varchar("versement_id", { length: 40 }),
     creeLe: iso("cree_le").notNull(),
     remisLe: isoNul("remis_le"),
   },

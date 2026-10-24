@@ -141,6 +141,13 @@
       "when": 1792572943367,
       "tag": "0019_traiteur",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792600000000,
+      "tag": "0020_versement-gerant",
+      "breakpoints": true
     }
   ]
 }

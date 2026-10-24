@@ -8,8 +8,9 @@
 //
 // Argent physique (§5) : un encaissement CASH reste EN_MAIN de
 // l'employé jusqu'à une remise_caisse VALIDÉE par le receveur ;
-// l'écart déclenche l'alerte propriétaire. Le MOBILE_MONEY n'est
-// pas du cash physique : REMIS d'office. La ventilation par espace
+// l'écart déclenche l'alerte propriétaire. Les ventes se règlent
+// en CASH uniquement (le mobile money ne sert qu'aux abonnements GBS) et
+// seul le personnel de caisse encaisse. La ventilation par espace
 // (note_ventilations) est COMPTABLE uniquement.
 //
 // Concurrence : encaisserNoteDb s'exécute en transaction avec
@@ -40,7 +41,6 @@ import {
   type TypeLigneNote,
 } from "@contracts/notes";
 import type { RoleActif } from "@contracts/types";
-import { normaliserReferenceMobile, referenceMobileValide } from "@contracts/billard";
 import { createRouter, protegee, publicQuery } from "../middleware";
 import { alerter, db, erreur, journaliser, resoudreTableParToken, tauxCourantDb } from "../gbsRouter";
 import { ajouterJours, maintenant, uid } from "../gbsUtils";
@@ -55,6 +55,11 @@ const ROLES_ENCAISSEMENT = ["PROPRIETAIRE", "GERANT", "SERVEUSE", "RECEPTIONNIST
 /** Note rattachée à un séjour : réception ou gérance SEULEMENT (§5.1). */
 const ROLES_RECEPTION = ["PROPRIETAIRE", "GERANT", "RECEPTIONNISTE"] as const;
 const ROLES_GERANCE = ["PROPRIETAIRE", "GERANT"] as const;
+/** Personnel qui ENCAISSE (cash). Ni le gérant ni le propriétaire : ils
+ *  valident et contrôlent, ils ne touchent pas l'argent d'un client
+ *  (séparation des tâches — la caisse reste vérifiable par un tiers).
+ *  Une note de séjour (chambre) n'est encaissée que par la réception. */
+export const ROLES_CAISSE = ["SERVEUSE", "RECEPTIONNISTE", "BILLARDIER", "VENDEUR", "PHARMACIEN", "PRESTATAIRE"] as const;
 /** Décision d'une prise en charge : serveuse de la zone ou gérant (§1.4). */
 const ROLES_DECISION_PEC = ["PROPRIETAIRE", "GERANT", "SERVEUSE"] as const;
 
@@ -78,6 +83,52 @@ export async function rolesSurOrganisation(acteurId: string, organisationId: str
     if (!roles.includes(a.role as RoleActif)) roles.push(a.role as RoleActif);
   }
   return roles;
+}
+
+/** Règle de la chaîne de l'argent : le cash d'un GÉRANT n'est validé que par le
+ *  PROPRIÉTAIRE — sinon deux gérants pourraient se valider l'un l'autre sans
+ *  que le propriétaire voie jamais l'argent. `cle` = id d'organisation OU
+ *  d'établissement (les deux conventions coexistent dans remises_caisse). */
+export async function exigerProprietaireSiRemiseDeGerantDb(
+  acteurId: string, employeId: string, cle: string,
+): Promise<void> {
+  const [parTerrasse] = await db().select({ organisationId: s.terrasses.organisationId })
+    .from(s.terrasses).where(eq(s.terrasses.id, cle)).limit(1);
+  const organisationId = parTerrasse?.organisationId ?? cle;
+  const rolesEmploye = await rolesSurOrganisation(employeId, organisationId);
+  if (!rolesEmploye.includes("GERANT") || rolesEmploye.includes("PROPRIETAIRE")) return;
+  const rolesActeur = await rolesSurOrganisation(acteurId, organisationId);
+  if (!rolesActeur.includes("PROPRIETAIRE")) {
+    await journaliser(acteurId, rolesActeur[0] ?? null, "ACCES_REFUSE",
+      "Validation d'une remise de gérant par un non-propriétaire refusée");
+    erreur("La caisse d'un gérant est validée par le propriétaire.");
+  }
+}
+
+/** Cash CASH remis à ce gérant (remises qu'il a validées) et pas encore versé. */
+async function cashAVerserDb(
+  ex: ReturnType<typeof db>, organisationId: string, gerantId: string, verrou = false,
+): Promise<{ id: string; cdf: number; usd: number }[]> {
+  const requete = ex.select({ id: s.encaissements.id, cdf: s.encaissements.montantCdf, usd: s.encaissements.montantUsd })
+    .from(s.encaissements)
+    .innerJoin(s.remisesCaisse, eq(s.encaissements.remiseId, s.remisesCaisse.id))
+    .where(and(
+      eq(s.encaissements.organisationId, organisationId),
+      eq(s.encaissements.statut, "REMIS"),
+      eq(s.encaissements.mode, "CASH"),
+      isNull(s.encaissements.versementId),
+      eq(s.remisesCaisse.validePar, gerantId),
+    ));
+  return verrou ? requete.for("update", { of: s.encaissements }) : requete;
+}
+
+/** Exige un rôle de CAISSE (jamais gérant/propriétaire) pour encaisser. */
+export async function exigerRoleCaisseDb(
+  acteurId: string, organisationId: string, noteDeSejour: boolean,
+): Promise<RoleActif> {
+  return exigerRoleOrganisation(acteurId, organisationId,
+    noteDeSejour ? ["RECEPTIONNISTE"] : ROLES_CAISSE,
+    "Encaissement (réservé au personnel de caisse, ni gérant ni propriétaire)");
 }
 
 /** Exige un rôle parmi `autorises` sur l'organisation ; tout refus est
@@ -426,8 +477,6 @@ export async function encaisserNoteDb(params: {
   acteurId: string;
   montantCdf: number;
   montantUsd: number;
-  mode: "CASH" | "MOBILE_MONEY";
-  referenceMobile?: string | null;
   pourboireCdf?: number;
   pourboireUsd?: number;
 }): Promise<{ resteCdf: number; resteUsd: number; reglee: boolean }> {
@@ -439,13 +488,11 @@ export async function encaisserNoteDb(params: {
     erreur("Montant invalide.");
   }
   if (montantCdf === 0 && montantUsd === 0) erreur("Rien à encaisser : montant nul.");
-  let reference: string | null = null;
-  if (params.mode === "MOBILE_MONEY") {
-    if (!params.referenceMobile || !referenceMobileValide(params.referenceMobile)) {
-      erreur("Référence de transaction mobile money invalide ou manquante.");
-    }
-    reference = normaliserReferenceMobile(params.referenceMobile);
-  }
+  // Garde de rôle AVANT toute écriture : seul le personnel de caisse encaisse.
+  const [noteGarde] = await db().select({ organisationId: s.notes.organisationId, sejourId: s.notes.sejourId })
+    .from(s.notes).where(eq(s.notes.id, params.noteId)).limit(1);
+  if (!noteGarde) erreur("Note introuvable.");
+  await exigerRoleCaisseDb(params.acteurId, noteGarde.organisationId, noteGarde.sejourId !== null);
 
   const resultat = await db().transaction(async (tx) => {
     // Verrou de la note : deux encaissements simultanés se sérialisent.
@@ -463,25 +510,13 @@ export async function encaisserNoteDb(params: {
     if (montantCdf > resteCdf || montantUsd > resteUsd) {
       erreur(`Montant supérieur au reste dû (${resteCdf} FC / ${resteUsd} ¢).`);
     }
-    // Unicité de la référence mobile money revérifiée DANS le verrou
-    // (l'index unique partiel reste la garde ultime).
-    if (reference) {
-      const [dup] = await tx.select({ id: s.encaissements.id }).from(s.encaissements)
-        .where(and(eq(s.encaissements.organisationId, note.organisationId), eq(s.encaissements.referenceMobile, reference)))
-        .limit(1);
-      if (dup) erreur("Cette référence de transaction a déjà été enregistrée.");
-    }
-
     const encaissementId = uid("enc");
     const maintenantIso = maintenant();
-    // MOBILE_MONEY : l'argent est chez l'opérateur, pas en main — REMIS
-    // d'office (le suivi EN_MAIN ne concerne que le cash physique, §5.6).
-    const statutEnc = params.mode === "CASH" ? "EN_MAIN" : "REMIS";
+    // Ventes : CASH uniquement (le mobile money ne sert qu'aux abonnements GBS).
     await tx.insert(s.encaissements).values({
       id: encaissementId, noteId: note.id, organisationId: note.organisationId,
-      encaisseParId: params.acteurId, montantCdf, montantUsd, mode: params.mode,
-      referenceMobile: reference, statut: statutEnc,
-      creeLe: maintenantIso, remisLe: statutEnc === "REMIS" ? maintenantIso : null,
+      encaisseParId: params.acteurId, montantCdf, montantUsd, mode: "CASH",
+      referenceMobile: null, statut: "EN_MAIN", creeLe: maintenantIso, remisLe: null,
     });
     if (pourboireCdf > 0 || pourboireUsd > 0) {
       // §5.4 : pourboire À PART — hors CA et hors ventilation par espace.
@@ -882,24 +917,20 @@ export const notesRouter = createRouter({
       noteId: z.string(),
       montantCdf: z.number().int().min(0).default(0),
       montantUsd: z.number().int().min(0).default(0),
-      mode: z.enum(["CASH", "MOBILE_MONEY"]),
-      referenceMobile: z.string().max(30).optional(),
       pourboireCdf: z.number().int().min(0).default(0),
       pourboireUsd: z.number().int().min(0).default(0),
     }))
     .mutation(async ({ input, ctx }) => {
       const [note] = await db().select().from(s.notes).where(eq(s.notes.id, input.noteId)).limit(1);
       if (!note) erreur("Note introuvable.");
-      const role = await exigerRoleOrganisation(ctx.session.utilisateurId, note.organisationId,
-        note.sejourId ? ROLES_RECEPTION : ROLES_ENCAISSEMENT, "Encaissement de note");
+      const role = await exigerRoleCaisseDb(ctx.session.utilisateurId, note.organisationId, note.sejourId !== null);
       const r = await encaisserNoteDb({
         noteId: note.id, acteurId: ctx.session.utilisateurId,
-        montantCdf: input.montantCdf, montantUsd: input.montantUsd, mode: input.mode,
-        referenceMobile: input.referenceMobile ?? null,
+        montantCdf: input.montantCdf, montantUsd: input.montantUsd,
         pourboireCdf: input.pourboireCdf, pourboireUsd: input.pourboireUsd,
       });
       await journaliser(ctx.session.utilisateurId, role, "ENCAISSEMENT_NOTE",
-        `Note ${note.id} : ${input.montantCdf} FC / ${input.montantUsd} ¢ (${input.mode})${r.reglee ? " — SOLDÉE" : ""}`,
+        `Note ${note.id} : ${input.montantCdf} FC / ${input.montantUsd} ¢ (cash)${r.reglee ? " — SOLDÉE" : ""}`,
         { terrasseId: undefined });
       return r;
     }),
@@ -1007,6 +1038,7 @@ export const notesRouter = createRouter({
       if (remise.employeId === ctx.session.utilisateurId) {
         erreur("Le receveur ne peut pas valider sa propre remise.");
       }
+      await exigerProprietaireSiRemiseDeGerantDb(ctx.session.utilisateurId, remise.employeId, remise.organisationId);
       const ecart = input.recuCdf !== remise.attenduCdf || input.recuUsd !== remise.attenduUsd;
       if (ecart && !input.motif.trim()) erreur("Un écart exige un motif.");
       await db().transaction(async (tx) => {
@@ -1018,6 +1050,10 @@ export const notesRouter = createRouter({
         await tx.update(s.encaissements)
           .set({ statut: ecart ? "ECART" : "REMIS", remisLe: maintenant() })
           .where(eq(s.encaissements.remiseId, remise.id));
+        // Versement du gérant : le cash arrive chez le propriétaire (VERSE).
+        await tx.update(s.encaissements)
+          .set({ statut: ecart ? "ECART" : "VERSE", remisLe: maintenant() })
+          .where(eq(s.encaissements.versementId, remise.id));
       });
       if (ecart) {
         const terrasses = await db().select({ id: s.terrasses.id }).from(s.terrasses)
@@ -1031,6 +1067,63 @@ export const notesRouter = createRouter({
         `Remise ${remise.id} : attendu ${remise.attenduCdf}/${remise.attenduUsd}, reçu ${input.recuCdf}/${input.recuUsd}`,
         { avant: `attendu ${remise.attenduCdf}/${remise.attenduUsd}`, apres: `reçu ${input.recuCdf}/${input.recuUsd}` });
       return { ok: true as const, ecart };
+    }),
+
+  /** Cash remis au gérant (remises qu'IL a validées) et pas encore versé
+   *  au propriétaire — de quoi afficher le bouton « Verser ». */
+  aVerser: protegee
+    .input(z.object({ terrasseId: z.string() }))
+    .query(async ({ input, ctx }) => {
+      const [terrasse] = await db().select().from(s.terrasses).where(eq(s.terrasses.id, input.terrasseId)).limit(1);
+      if (!terrasse) erreur("Établissement introuvable.");
+      await exigerRoleOrganisation(ctx.session.utilisateurId, terrasse.organisationId, ["GERANT"], "Consultation du cash à verser");
+      const lignes = await cashAVerserDb(db(), terrasse.organisationId, ctx.session.utilisateurId);
+      const [enAttente] = await db().select({ id: s.remisesCaisse.id }).from(s.remisesCaisse)
+        .where(and(eq(s.remisesCaisse.employeId, ctx.session.utilisateurId),
+          eq(s.remisesCaisse.organisationId, terrasse.organisationId),
+          eq(s.remisesCaisse.statut, "EN_ATTENTE"))).limit(1);
+      return {
+        cdf: lignes.reduce((x, l) => x + l.cdf, 0),
+        usd: lignes.reduce((x, l) => x + l.usd, 0),
+        nb: lignes.length,
+        enAttente: Boolean(enAttente),
+      };
+    }),
+
+  /** Dernier maillon de la chaîne de l'argent : le GÉRANT remet au
+   *  PROPRIÉTAIRE, en personne, le cash des remises qu'il a validées.
+   *  Le propriétaire confirme depuis ses remises en attente
+   *  (validerRemise) : le cash passe VERSE. Un écart exige un motif. */
+  verserAuProprietaire: protegee
+    .input(z.object({ terrasseId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const acteurId = ctx.session.utilisateurId;
+      const [terrasse] = await db().select().from(s.terrasses).where(eq(s.terrasses.id, input.terrasseId)).limit(1);
+      if (!terrasse) erreur("Établissement introuvable.");
+      const role = await exigerRoleOrganisation(acteurId, terrasse.organisationId, ["GERANT"], "Versement au propriétaire");
+      const [enAttente] = await db().select({ id: s.remisesCaisse.id }).from(s.remisesCaisse)
+        .where(and(eq(s.remisesCaisse.employeId, acteurId),
+          eq(s.remisesCaisse.organisationId, terrasse.organisationId),
+          eq(s.remisesCaisse.statut, "EN_ATTENTE"))).limit(1);
+      if (enAttente) erreur("Un versement est déjà en attente de confirmation par le propriétaire.");
+      const id = uid("rem");
+      const total = await db().transaction(async (tx) => {
+        // Verrou sur les lignes : deux versements simultanés ne comptent pas deux fois le même cash.
+        const lignes = await cashAVerserDb(tx as unknown as ReturnType<typeof db>, terrasse.organisationId, acteurId, true);
+        if (lignes.length === 0) erreur("Aucun cash à verser : validez d'abord les remises de votre équipe.");
+        const cdf = lignes.reduce((x, l) => x + l.cdf, 0);
+        const usd = lignes.reduce((x, l) => x + l.usd, 0);
+        await tx.insert(s.remisesCaisse).values({
+          id, organisationId: terrasse.organisationId, employeId: acteurId,
+          attenduCdf: cdf, attenduUsd: usd, statut: "EN_ATTENTE", creeLe: maintenant(),
+        });
+        await tx.update(s.encaissements).set({ versementId: id })
+          .where(inArray(s.encaissements.id, lignes.map((l) => l.id)));
+        return { cdf, usd };
+      });
+      await journaliser(acteurId, role, "VERSEMENT_DECLARE",
+        `${total.cdf} FC / ${total.usd} ¢ à remettre au propriétaire`);
+      return { id, attenduCdf: total.cdf, attenduUsd: total.usd };
     }),
 
   /** Client parti sans payer (§5.3) : la note passe LITIGE et n'est

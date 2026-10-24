@@ -27,9 +27,7 @@ import {
   appelExpire,
   dureeMoyennePartiesMin,
   estimerAttenteMin,
-  normaliserReferenceMobile,
   positionDansFile,
-  referenceMobileValide,
   statutApresDefaite,
   vincaireDoitSortir,
   type ConfigBillard,
@@ -43,7 +41,7 @@ import {
   ajouterTableDb, alerter, db, erreur, exigerGerantOuProprio, journaliser, rolesSurDb, tauxCourantDb,
 } from "../gbsRouter";
 import { exigerPermission } from "../lib/permissions";
-import { ajouterLignesNoteDb, encaisserNoteDb, exigerTelephoneSiGrosseNoteDb, sommesNoteDb } from "./notes";
+import { ajouterLignesNoteDb, encaisserNoteDb, exigerRoleCaisseDb, exigerTelephoneSiGrosseNoteDb, sommesNoteDb } from "./notes";
 import { maintenant, uid } from "../gbsUtils";
 
 const zReglePerdant = z.enum(["RACHAT", "FIN_FILE", "SORTIE"]);
@@ -265,9 +263,6 @@ export const billardRouter = createRouter({
             serie: t.serie, payeLe: t.payeLe, appeleLe: t.appeleLe,
             entreeFileLe: t.entreeFileLe, creeLe: t.creeLe, prixCdf: t.prixCdf,
             comptoir: t.clientSessionId === null,
-            // Référence Airtel Money déclarée (staff uniquement) : le
-            // caissier la compare à son téléphone avant de valider.
-            referenceMobile: t.referenceMobile,
           }))
           .sort((a, b) => {
             const rang = (x: typeof a) =>
@@ -283,18 +278,12 @@ export const billardRouter = createRouter({
   /** Achat d'un token (client, QR) : le token reste en
    *  ATTENTE_PAIEMENT tant que le paiement n'est pas validé — le
    *  client voit « Paiement en attente de validation » (annexe §1).
-   *
-   *  Airtel Money flux manuel (boucle 6) : le client paie au numéro
-   *  de l'établissement puis DÉCLARE la référence de transaction
-   *  reçue par SMS (referenceMobile). Elle est unique par
-   *  établissement (index partiel en base) — une même référence ne
-   *  peut pas payer deux tokens. Le caissier compare la référence
-   *  affichée avec son propre téléphone avant de valider. */
+
+   *  Paiement en CASH uniquement (le mobile money ne sert qu'aux abonnements). */
   acheterToken: publicQuery
     .input(z.object({
       token: z.string(),
       clientSessionId: z.string(),
-      referenceMobile: z.string().max(30).optional(),
     }))
     .mutation(async ({ input }) => {
       const table = await billardParTokenQr(input.token);
@@ -307,20 +296,6 @@ export const billardRouter = createRouter({
       }
       const config = await configPour(table.terrasseId);
       await exigerTelephoneSiGrosseNoteDb(sess.id, config.prixTokenCdf);
-      const refMobile = input.referenceMobile
-        ? normaliserReferenceMobile(input.referenceMobile)
-        : null;
-      if (refMobile && !referenceMobileValide(refMobile)) {
-        erreur("Référence de transaction invalide (6 à 30 caractères, chiffres et lettres).");
-      }
-      if (refMobile) {
-        const [deja] = await db().select({ id: s.tokensBillard.id }).from(s.tokensBillard)
-          .where(and(
-            eq(s.tokensBillard.terrasseId, table.terrasseId),
-            eq(s.tokensBillard.referenceMobile, refMobile),
-          )).limit(1);
-        if (deja) erreur("Cette référence Airtel Money a déjà été déclarée sur cet établissement.");
-      }
       const plage = plageDuJour();
       const duJour = await db().select({ id: s.tokensBillard.id }).from(s.tokensBillard)
         .where(and(eq(s.tokensBillard.tableId, table.id), gte(s.tokensBillard.creeLe, plage.debut), lt(s.tokensBillard.creeLe, plage.fin)));
@@ -330,7 +305,7 @@ export const billardRouter = createRouter({
         id: uid("tok"), terrasseId: table.terrasseId, tableId: table.id,
         numero: duJour.length + 1, clientSessionId: sess.id, prenom: sess.prenom,
         prixCdf: config.prixTokenCdf, statut: "ATTENTE_PAIEMENT",
-        serie: 0, creeLe: maintenant(), referenceMobile: refMobile,
+        serie: 0, creeLe: maintenant(),
         tauxUsdCdf: tauxVente,
       }).returning();
 
@@ -358,9 +333,8 @@ export const billardRouter = createRouter({
       // --- FIN AJOUT DIRECT ---
 
       await journaliser(null, null,
-        refMobile ? "BILLARD_PAIEMENT_MOBILE_DECLARE" : "BILLARD_TOKEN_CREE",
-        `Token #${cree.numero} (${sess.prenom}) — ${config.prixTokenCdf} FC` +
-        (refMobile ? ` — Airtel Money réf ${refMobile} déclarée, à vérifier par le caissier` : ""),
+        "BILLARD_TOKEN_CREE",
+        `Token #${cree.numero} (${sess.prenom}) — ${config.prixTokenCdf} FC`,
         { terrasseId: table.terrasseId });
       return { id: cree.id, numero: cree.numero, statut: cree.statut, prixCdf: cree.prixCdf };
     }),
@@ -544,6 +518,12 @@ export const billardRouter = createRouter({
         .where(eq(s.tokensBillard.id, input.tokenId)).limit(1);
       if (!t) erreur("Token introuvable.");
       const role = await exigerPermission(acteurId, t.terrasseId, "VALIDER_TOKEN_BILLARD");
+      // Valider un token = encaisser du cash : réservé au personnel de caisse
+      // (vérifié AVANT de changer le statut, sinon token en file sans encaissement).
+      const [terrasseToken] = await db().select({ organisationId: s.terrasses.organisationId })
+        .from(s.terrasses).where(eq(s.terrasses.id, t.terrasseId)).limit(1);
+      if (!terrasseToken) erreur("Établissement introuvable.");
+      await exigerRoleCaisseDb(acteurId, terrasseToken.organisationId, false);
       if (t.statut === "EN_FILE" || t.payeLe) erreur("Ce token est déjà payé.");
       if (t.statut !== "ATTENTE_PAIEMENT") erreur("Ce token n'attend plus de paiement.");
       await db().update(s.tokensBillard)
@@ -566,15 +546,12 @@ export const billardRouter = createRouter({
           if (cdf > 0) {
             await encaisserNoteDb({
               noteId, acteurId, montantCdf: cdf, montantUsd: 0,
-              mode: t.referenceMobile ? "MOBILE_MONEY" : "CASH",
-              referenceMobile: t.referenceMobile,
             });
           }
         }
       }
       await journaliser(acteurId, role, "BILLARD_PAIEMENT_VALIDE",
-        `Token #${t.numero} (${t.prenom}) — ${t.prixCdf} FC encaissés` +
-        (t.referenceMobile ? ` — Airtel Money réf ${t.referenceMobile} vérifiée` : " (cash)"),
+        `Token #${t.numero} (${t.prenom}) — ${t.prixCdf} FC encaissés (cash)`,
         { terrasseId: t.terrasseId, avant: "ATTENTE_PAIEMENT", apres: "EN_FILE" });
       return { ok: true as const };
     }),

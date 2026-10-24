@@ -893,6 +893,8 @@ export interface DB {
     encaisseParId: string;
     montantCdf: number; montantUsd: number;
     mode: string; statut: string; creeLe: string;
+    /** Versement du gérant au propriétaire qui couvre ce cash (NULL = pas encore versé) */
+    versementId?: string | null;
   }>;
   /** Remises de caisse (déclarations réceptionniste/serveuse) */
   remisesCaisse?: Array<{

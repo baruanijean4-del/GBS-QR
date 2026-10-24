@@ -12,7 +12,7 @@ import { Carte, Chargement, Feuille, GrosBouton, Pill, SaisieNombre, Vide, class
 import { fmtCDF, fmtUSD, ilYA } from '@/lib/format'
 import {
   useDB, validerRemiseNote, utilisateurDe,
-  validerCaisse, contesterCaisse,
+  validerCaisse, contesterCaisse, verserAuProprietaire,
   ouEstLArgent,
 } from '@/lib/store'
 import { useT } from '@/i18n'
@@ -34,6 +34,8 @@ export function PanneauRemisesGerant({ terrasseId }: { terrasseId: string }) {
   // --- Source 2 : déclarations de caisse (nouveau) ---
   const remisesCaisse = trpc.remises.listerEnAttente.useQuery({ terrasseId }, { refetchInterval: 5000 })
 
+  // Seul un GÉRANT a un cash à verser : la requête est refusée aux autres rôles (carte masquée).
+  const aVerser = trpc.notes.aVerser.useQuery({ terrasseId }, { retry: false, refetchInterval: 5000 })
   const configMutation = trpc.notes.configurerNote.useMutation()
   const terrasse = db.terrasses.find((x) => x.id === terrasseId)
   const [tokenSurNote, setTokenSurNote] = useState<boolean>((terrasse as any)?.tokenSurNote ?? false)
@@ -51,6 +53,14 @@ export function PanneauRemisesGerant({ terrasseId }: { terrasseId: string }) {
         tokenSurNote,
       })
       toast.success(t('note.config_enregistree'))
+    } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
+  }
+
+  const verser = async () => {
+    try {
+      await verserAuProprietaire(terrasseId)
+      toast.success(t('note.verser_ok'))
+      void aVerser.refetch()
     } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
   }
 
@@ -81,6 +91,20 @@ export function PanneauRemisesGerant({ terrasseId }: { terrasseId: string }) {
               </>
             ) : (
               <p className="text-xs text-sable/60">Aucun cash en main.</p>
+            )}
+            {(etat.chezGerant.cdf > 0 || etat.chezGerant.usd > 0) && (
+              <p className="mt-2 text-sm text-sable">
+                {t('note.verser_titre')} : <b>{fmtCDF(etat.chezGerant.cdf)}</b>
+                {etat.chezGerant.usd > 0 ? ` + ${fmtUSD(etat.chezGerant.usd)}` : ''}
+              </p>
+            )}
+            {aVerser.data && aVerser.data.nb > 0 && !aVerser.data.enAttente && (
+              <div className="mt-2">
+                <GrosBouton onClick={() => void verser()}>{t('note.verser_bouton')}</GrosBouton>
+              </div>
+            )}
+            {aVerser.data?.enAttente && (
+              <p className="mt-2 text-sm text-ambre">{t('note.verser_attente')}</p>
             )}
             {etat.declarationsEnAttente > 0 && (
               <p className="mt-2 text-sm text-ambre">

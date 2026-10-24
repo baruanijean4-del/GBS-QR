@@ -74,6 +74,7 @@ export const ARTEFACTS_REQUIS: readonly { type: "table" | "colonne"; nom: string
   { type: "table", nom: "traiteur_bon_lignes" }, // 0019
   { type: "table", nom: "traiteur_comptages" }, // 0019
   { type: "colonne", nom: "produits.cout_achat_usd" }, // 0019
+  { type: "colonne", nom: "encaissements.versement_id" }, // 0020
 ];
 
 /** Pur : artefacts requis absents d'un ensemble de noms présents. */
@@ -105,6 +106,7 @@ const JOURNAL: readonly { hash: string; when: number }[] = [
   { hash: "ca61cd5efed10abc7def3a93e48652097a98de68adb678af6d4008ad96faad5f", when: 1792445318121 },
   { hash: "5fff4d9a84985cec5c609cc6d617b1c0a45e193c5c72c8ca19aa1d818dd1fdc2", when: 1792570737821 },
   { hash: "d9293eee4ecbededee0b3032c285670fed1c95d569a66a478465a816c1c63485", when: 1792572943367 },
+  { hash: "389893af141104a6c366f1bbd5278bd7e897ec10a64e61d19d037fe337acf7ab", when: 1792600000000 },
 ];
 
 let schemaPret: Promise<void> | null = null;
@@ -147,7 +149,7 @@ export function assurerSchema(): Promise<void> {
             `Application automatique DÉSACTIVÉE — appliquer explicitement : npm run db:migrate`,
           );
         }
-        console.log("[boot] schéma vérifié (production : lecture seule, 0006-0019 présents).");
+        console.log("[boot] schéma vérifié (production : lecture seule, 0006-0020 présents).");
         return;
       }
 
@@ -644,6 +646,10 @@ export function assurerSchema(): Promise<void> {
       `);
       await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_comptages_terrasse ON traiteur_comptages (terrasse_id, cree_le)`);
 
+      // --- Migration 0020 : versement du gérant au propriétaire.
+      // Corps identique à db/migrations/0020_versement-gerant.sql.
+      await db.execute(sql`ALTER TABLE encaissements ADD COLUMN IF NOT EXISTS versement_id varchar(40)`);
+
 
       // --- Journal drizzle : marque les migrations présentes ----
       // (une base existante a forcément 0000-0004 ; 0005-0007 sont
@@ -666,7 +672,7 @@ export function assurerSchema(): Promise<void> {
           )
         `);
       }
-      console.log("[boot] schéma vérifié (migrations 0006-0019 assurées).");
+      console.log("[boot] schéma vérifié (migrations 0006-0020 assurées).");
     })().catch((e) => {
       schemaPret = null; // prochain appel : nouvelle tentative
       throw e;
