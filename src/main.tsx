@@ -18,7 +18,7 @@ if (sentryDsn) {
       dsn: sentryDsn,
       environment: import.meta.env.PROD ? 'production' : 'development',
       // Les 401/403 sont des réponses métier normales, pas des bugs
-      ignoreErrors: ['UNAUTHORIZED', 'FORBIDDEN', 'Session expirée ou invalide'],
+      ignoreErrors: ['UNAUTHORIZED', 'FORBIDDEN', 'Session expirée ou invalide', 'Session expired or invalid', 'Sessão expirada ou inválida', 'Kipindi kimeisha au si sahihi'],
       beforeSend(evenement) {
         // Hygiène : jamais de PIN ni de jeton dans un rapport
         if (evenement.request?.headers) delete evenement.request.headers

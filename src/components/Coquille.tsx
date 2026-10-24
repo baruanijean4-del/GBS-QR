@@ -8,7 +8,7 @@ import { useEffect, type ReactNode } from 'react'
 import { LogOut } from 'lucide-react'
 import { Chargement, Entete, GrosBouton, NavBasse, Vide } from '@/components/gbs'
 import type { Onglet } from '@/components/gbs'
-import { useI18n, useT } from '@/i18n'
+import { useEtablissementCourant, useI18n, useT } from '@/i18n'
 import { naviguer } from '@/lib/router'
 import { definirLangue, deconnexion, ecrireSession, organisationDe, rolesSur, terrasseDe, useDB, useDBPret, useSession, utilisateurDe } from '@/lib/store'
 import type { RoleActif, SessionLocale, Terrasse, Utilisateur } from '@/lib/types'
@@ -70,6 +70,8 @@ export function PorteRole({ rolesVoulus, indiceDemo, children }: {
 
   const moi = utilisateurDe(db, session?.utilisateurId)
   const terrasse = session ? terrasseDe(db, session.terrasseId) : null
+  // Vocabulaire de l'écran : table / chambre / comptoir selon le type d'établissement
+  useEtablissementCourant(terrasse)
 
   // Boucle 5 : la langue choisie sur l'appareil est mémorisée sur
   // l'organisation — on ne pousse que si elle diffère de la base.

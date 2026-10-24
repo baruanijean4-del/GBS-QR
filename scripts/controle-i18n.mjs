@@ -11,8 +11,9 @@
 
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const RACINE = new URL('..', import.meta.url).pathname
+const RACINE = fileURLToPath(new URL('..', import.meta.url))
 const SRC = join(RACINE, 'src')
 
 const fr = JSON.parse(readFileSync(join(SRC, 'i18n/fr.json'), 'utf8'))
@@ -81,7 +82,7 @@ console.log(`3. Clés utilisées : ${utilises.size} référencées, toutes prés
 // ---------- 4. Chaînes visibles en dur (accents + français sans accent) ----------
 // Exemptés : l'écran d'erreur (indépendant par conception), les tests
 // (descriptions et assertions, jamais rendues dans l'app).
-const EXEMPTS = ['ErreurEcran.tsx']
+const EXEMPTS = ['ErreurEcran.tsx', `i18n${sep}index.tsx`] // index.tsx : articles du vocabulaire (grammaire, pas de l'affichage direct)
 const RE_ACCENT = /[àâäçéèêëîïôöùûüÉÈÀ]/
 // Marqueurs de français sans accent qui ne devraient jamais apparaître dans
 // le JSX visible (attrapés après retrait des commentaires et du code).
@@ -103,6 +104,7 @@ for (const [f, texte] of contenus) {
     if (/^\s*(import|export type|type |interface )/.test(l)) continue
     if (/console\.(log|warn|error|info)/.test(l)) continue
     if (/ignoreErrors/.test(l)) continue
+    if (/UNITES_FINES/.test(l)) continue // codes d'unités de mesure (données), pas du texte affiché
     ko(`${accentuee ? 'accent' : 'français sans accent'} en dur : ${relative(RACINE, f)}:${i + 1} — ${l.trim().slice(0, 90)}`)
   }
 }

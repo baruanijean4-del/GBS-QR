@@ -26,7 +26,7 @@ import { naviguer } from './router'
 import { jourLubu } from './format'
 import { prixMensuelTerrasse } from './pricing'
 import { assainirDb } from './validation'
-import { traduire, type Langue } from '@/i18n'
+import { traduire, useI18n, type Langue } from '@/i18n'
 import type {
   Abonnement, Alerte, ClientSession, DB, Depense, LigneCommande, Paiement, Portee,
   RoleActif, RoleEtablissement, SessionLocale, SessionService, TableT, Terrasse, TypeEtablissement, TypeMouvement, Utilisateur,
@@ -101,6 +101,7 @@ const DB_VIDE: DB = {
 function useSnapshot() {
   const portee = useContext(ContextePortee)
   const utils = trpc.useUtils()
+  const { langue } = useI18n()
   const requete = trpc.gbs.snapshot.useQuery(
     { portee },
     {
@@ -109,6 +110,11 @@ function useSnapshot() {
       retry: (echec, erreur) => !estNonAutorise(erreur) && echec < 3, // inutile de réessayer un 401
     },
   )
+  // Changement de langue : le serveur traduit alertes et messages — on recharge
+  // aussitôt pour que les notifications suivent la langue choisie.
+  useEffect(() => {
+    void utils.gbs.snapshot.invalidate()
+  }, [langue, utils])
   // Un 401 sur le polling (jeton expiré en cours de journée) → reconnexion
   useEffect(() => {
     if (requete.error && estNonAutorise(requete.error)) gererNonAutorise()
@@ -1077,7 +1083,7 @@ export function cleSoldeSelonType(type: string | undefined | null): string {
 export function ouEstLArgent(db: DB, terrasseId: string) {
   const orgId = db.terrasses.find((x) => x.id === terrasseId)?.organisationId
   const dansEtab = (cle: string) => cle === terrasseId || cle === orgId
-  const cashParEmploye: Record<string, { nom: string; role: string; cdf: number; usd: number }> = {};
+  const cashParEmploye: Record<string, { nom: string; cdf: number; usd: number }> = {};
   let chezGerantCdf = 0
   let chezGerantUsd = 0
   for (const e of (db.encaissements ?? [])) {
@@ -1092,7 +1098,7 @@ export function ouEstLArgent(db: DB, terrasseId: string) {
     const u = utilisateurDe(db, e.encaisseParId);
     if (!u) continue;
     if (!cashParEmploye[u.id]) {
-      cashParEmploye[u.id] = { nom: u.nom, role: 'Employé', cdf: 0, usd: 0 };
+      cashParEmploye[u.id] = { nom: u.nom, cdf: 0, usd: 0 };
     }
     cashParEmploye[u.id].cdf += e.montantCdf;
     cashParEmploye[u.id].usd += e.montantUsd;

@@ -12,7 +12,7 @@ import { Carte, GrosBouton } from '@/components/gbs'
 import { SelecteurLangue } from '@/components/SelecteurLangue'
 import { naviguer } from '@/lib/router'
 import { reinitialiserDemo, useAnnuaire } from '@/lib/store'
-import { useT } from '@/i18n'
+import { traduire, useT } from '@/i18n'
 import { COURRIEL, WA_AFFICHE, lienWhatsApp } from '@/lib/contact'
 
 // ---------- Logo ----------
@@ -24,7 +24,7 @@ function MarqueGBS({ className }: { className: string }) {
   // useId : le dégradé doit avoir un id unique (plusieurs logos par page)
   const id = useId()
   return (
-    <svg viewBox="0 0 64 64" className={`${className} shrink-0 drop-shadow-[0_6px_14px_rgb(var(--ambre)/0.25)]`} role="img" aria-label="Logo GBS">
+    <svg viewBox="0 0 64 64" className={`${className} shrink-0 drop-shadow-[0_6px_14px_rgb(var(--ambre)/0.25)]`} role="img" aria-label={traduire('commun.logo_gbs')}>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="rgb(var(--ambre))" />

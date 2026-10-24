@@ -11,7 +11,7 @@ import { toast } from 'sonner'
 import { BoutonDeconnexion, CoquilleRole, PorteRole } from '@/components/Coquille'
 import { BadgeCmd, Carte, Confirmation, Etoiles, GrosBouton, Money, Pill, SaisieNombre, Vide, classeSaisie } from '@/components/gbs'
 import { dateHeure, fmtCDF, fmtUSD, heureLubu, ilYA } from '@/lib/format'
-import { LOCALES, useI18n, useT } from '@/i18n'
+import { LOCALES, traduire, useI18n, useT } from '@/i18n'
 import {
   FournisseurPortee, attenduSession, cloturerSession, confirmerCommande, declarerDepot,
   impayesSession, marquerAlertesLues, marquerPayee, marquerServie, ouvrirSessionService, sessionOuverte,
@@ -88,7 +88,7 @@ function EspaceServeuse({ moi, terrasse }: { moi: Utilisateur; terrasse: Terrass
         const nb = nouvelles.length
         if (dernierNb >= 0 && nb > dernierNb) {
           creerDing()
-          toast.info(`🔔 ${nb - dernierNb} nouvelle(s) commande(s) !`)
+          toast.info(traduire('serveuse.nouvelles_commandes', { n: nb - dernierNb }))
         }
         setNbNouvelles(nb)
         dernierNb = nb
@@ -116,7 +116,7 @@ function EspaceServeuse({ moi, terrasse }: { moi: Utilisateur; terrasse: Terrass
                   const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
                   ctx.resume()
                 } catch { /* silencieux */ }
-                toast.success('Son activé !')
+                toast.success(t('serveuse.son_active'))
               }}
               className="rounded-full bg-ambre/20 px-3 py-1.5 text-xs font-bold text-ambre"
             >
@@ -422,7 +422,7 @@ function OngletCaisse({ terrasseId, serveuseId }: { terrasseId: string; serveuse
                 } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
               }}
             >
-              <HandCoins className="h-5 w-5" /> Déclarer Caisse (Commandes)
+              <HandCoins className="h-5 w-5" /> {t('serveuse.declarer_caisse_commandes')}
             </GrosBouton>
             <GrosBouton
               ton="secondaire"
@@ -431,11 +431,11 @@ function OngletCaisse({ terrasseId, serveuseId }: { terrasseId: string; serveuse
                 try {
                   await declarerDepot(derniereCloturee.id, cdfSaisi, usdSaisi, 'CHAMBRE', ecart ? motifEcart.trim() : undefined)
                   setCdf(''); setUsd(''); setMotifEcart('')
-                  toast.success('Dépôt Chambre déclaré !')
+                  toast.success(t('serveuse.depot_chambre_declare'))
                 } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
               }}
             >
-              <HandCoins className="h-5 w-5" /> Déclarer Chambre
+              <HandCoins className="h-5 w-5" /> {t('serveuse.declarer_chambre')}
             </GrosBouton>
           </div>
         </Carte>

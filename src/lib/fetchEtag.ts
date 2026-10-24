@@ -13,6 +13,7 @@
 // ============================================================
 
 import { mettreAJourJeton } from "./sessionLocale";
+import { langueCourante } from "@/i18n";
 
 interface EntreeCache {
   etag: string;
@@ -31,6 +32,8 @@ export async function fetchAvecEtag(
 
   // En-têtes de la requête + If-None-Match si une réponse est mémorisée
   const entetes = new Headers(init?.headers);
+  // Langue choisie : le serveur traduit ses messages d'erreur et ses alertes (api/lib/traductionServeur.ts)
+  entetes.set("x-lang", langueCourante());
   const memo = cacheEtag.get(cle);
   if (memo) entetes.set("if-none-match", memo.etag);
 

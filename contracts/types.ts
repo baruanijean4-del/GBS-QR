@@ -180,6 +180,7 @@ const TABLES: Libelle = { fr: "tables", en: "tables", pt: "mesas", sw: "meza" };
 const CHAMBRE: Libelle = { fr: "chambre", en: "room", pt: "quarto", sw: "chumba" };
 const CHAMBRES: Libelle = { fr: "chambres", en: "rooms", pt: "quartos", sw: "vyumba" };
 const COMPTOIR: Libelle = { fr: "comptoir", en: "counter", pt: "balcão", sw: "kaunta" };
+const COMPTOIRS: Libelle = { fr: "comptoirs", en: "counters", pt: "balcões", sw: "kaunta" };
 
 const ALERTES_COMMUNES = [
   "REMISE_SUSPECTE", "ECART_CAISSE", "ECART_STOCK", "ANNULATION_APRES_ENCAISSEMENT",
@@ -220,7 +221,7 @@ export const TYPES_ETABLISSEMENT: Record<TypeEtablissement, TypeEtablissementDef
   BOUTIQUE: {
     type: "BOUTIQUE",
     modules: ["CATALOGUE", "COMMANDES", "STOCK", "CAISSE", "ALERTES", "CREDIT_CLIENT"],
-    zone: COMPTOIR, zones: COMPTOIR,
+    zone: COMPTOIR, zones: COMPTOIRS,
     qrAutorises: ["COMPTOIR"],
     roles: ["GERANT", "VENDEUR"],
     widgets: ["ventes_jour", "caisse_jour", "ruptures", "credits", "alertes"],
@@ -230,7 +231,7 @@ export const TYPES_ETABLISSEMENT: Record<TypeEtablissement, TypeEtablissementDef
   PHARMACIE: {
     type: "PHARMACIE",
     modules: ["CATALOGUE", "COMMANDES", "STOCK", "CAISSE", "ALERTES", "LOTS_PEREMPTION", "ORDONNANCES"],
-    zone: COMPTOIR, zones: COMPTOIR,
+    zone: COMPTOIR, zones: COMPTOIRS,
     qrAutorises: ["ZONE", "COMPTOIR"], // plusieurs comptoirs/rayons (règle historique)
     roles: ["GERANT", "PHARMACIEN", "VENDEUR"],
     widgets: ["ventes_jour", "caisse_jour", "peremptions", "ruptures", "ordonnances_attente", "alertes"],
@@ -240,7 +241,7 @@ export const TYPES_ETABLISSEMENT: Record<TypeEtablissement, TypeEtablissementDef
   QUINCAILLERIE: {
     type: "QUINCAILLERIE",
     modules: ["CATALOGUE", "COMMANDES", "STOCK", "CAISSE", "ALERTES", "CREDIT_CLIENT"],
-    zone: COMPTOIR, zones: COMPTOIR,
+    zone: COMPTOIR, zones: COMPTOIRS,
     qrAutorises: ["COMPTOIR"],
     roles: ["GERANT", "VENDEUR"],
     widgets: ["ventes_jour", "caisse_jour", "ruptures", "credits", "devis_en_cours", "alertes"],
@@ -250,7 +251,7 @@ export const TYPES_ETABLISSEMENT: Record<TypeEtablissement, TypeEtablissementDef
   SALON: {
     type: "SALON",
     modules: ["RENDEZ_VOUS", "CATALOGUE", "STOCK", "CAISSE", "ALERTES"],
-    zone: COMPTOIR, zones: COMPTOIR,
+    zone: COMPTOIR, zones: COMPTOIRS,
     qrAutorises: ["COMPTOIR"],
     roles: ["GERANT", "PRESTATAIRE"],
     widgets: ["rdv_jour", "caisse_jour", "commissions", "alertes"],
@@ -260,7 +261,7 @@ export const TYPES_ETABLISSEMENT: Record<TypeEtablissement, TypeEtablissementDef
   AUTRE: {
     type: "AUTRE",
     modules: ["CATALOGUE", "COMMANDES", "STOCK", "CAISSE", "ALERTES"],
-    zone: COMPTOIR, zones: COMPTOIR,
+    zone: COMPTOIR, zones: COMPTOIRS,
     qrAutorises: ["COMPTOIR"],
     roles: ["GERANT", "SERVEUSE", "VENDEUR"],
     widgets: ["ventes_jour", "caisse_jour", "stock_bas", "alertes"],

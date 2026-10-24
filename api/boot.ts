@@ -7,6 +7,7 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./router";
 import { createContext } from "./context";
 import { etagSnapshot } from "./lib/etagSnapshot";
+import { langueDepuisEntete, traduireMessage } from "./lib/traductionServeur";
 import { env } from "./lib/env";
 import { capturerErreur, initMonitoring } from "./lib/monitoring";
 import { enregistrerErreurClient, erreurPermise, schemaErreurClient } from "./lib/erreursClient";
@@ -25,12 +26,16 @@ if (env.isProduction) {
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
+/** Message d'erreur (écrit en français) traduit selon l'en-tête x-lang de la requête */
+const tr = (c: { req: { header: (n: string) => string | undefined } }, message: string) =>
+  traduireMessage(message, langueDepuisEntete(c.req.header("x-lang")));
+
 // 10 Mo suffisent : la plus grosse requête est l'upload photo produit
 // (5 Mo de binaire → ~7 Mo une fois encodé en base64 dans le JSON tRPC).
 // Au-delà → 413 avec un message clair (protection DoS / bande passante).
 app.use(bodyLimit({
   maxSize: 10 * 1024 * 1024,
-  onError: (c) => c.json({ error: "Fichier trop volumineux. Maximum 10 Mo." }, 413),
+  onError: (c) => c.json({ error: tr(c, "Fichier trop volumineux. Maximum 10 Mo.") }, 413),
 }));
 
 // En-têtes de sécurité HTTP (X-Frame-Options, X-Content-Type-Options,
@@ -82,22 +87,22 @@ app.post("/api/erreurs", async (c) => {
   try {
     corps = await c.req.json();
   } catch {
-    return c.json({ error: "Corps JSON invalide." }, 400);
+    return c.json({ error: tr(c, "Corps JSON invalide.") }, 400);
   }
   const lu = schemaErreurClient.safeParse(corps);
   if (!lu.success) {
-    return c.json({ error: "Charge refusée : champs non conformes." }, 400);
+    return c.json({ error: tr(c, "Charge refusée : champs non conformes.") }, 400);
   }
   const ip = c.req.header("x-forwarded-for")?.split(",")[0].trim() || "inconnue";
   if (!erreurPermise(`${ip}|${lu.data.appareilId}`)) {
-    return c.json({ error: "Trop d'envois — réessayez dans une minute." }, 429);
+    return c.json({ error: tr(c, "Trop d'envois — réessayez dans une minute.") }, 429);
   }
   try {
     await enregistrerErreurClient(lu.data, c.req.header("user-agent"));
     return c.json({ ok: true });
   } catch (e) {
     capturerErreur(e);
-    return c.json({ error: "Enregistrement impossible." }, 500);
+    return c.json({ error: tr(c, "Enregistrement impossible.") }, 500);
   }
 });
 
@@ -106,7 +111,7 @@ app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 // Erreur non interceptée hors tRPC (front statique, middlewares…)
 app.onError((e, c) => {
   capturerErreur(e);
-  return c.json({ error: "Erreur interne du serveur." }, 500);
+  return c.json({ error: tr(c, "Erreur interne du serveur.") }, 500);
 });
 
 export default app;

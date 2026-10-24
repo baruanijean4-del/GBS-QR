@@ -13,6 +13,7 @@
                     "preview":  "vite preview",
                     "start":  "NODE_ENV=production node dist/boot.js",
                     "check":  "tsc -b",
+                    "i18n":  "node scripts/controle-i18n.mjs",
                     "format":  "prettier --write .",
                     "test":  "vitest run",
                     "db:generate":  "drizzle-kit generate",

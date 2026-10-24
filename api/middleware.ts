@@ -1,9 +1,19 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
+import { traduireMessage } from "./lib/traductionServeur";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
+  // Messages d'erreur dans la langue du client (x-lang) ; français sinon.
+  errorFormatter({ error, shape, ctx }) {
+    const langue = ctx?.langue ?? "fr";
+    // Saisie invalide (Zod) : jamais le JSON technique à l'écran
+    const message = error.cause?.name === "ZodError"
+      ? traduireMessage("Données invalides — vérifiez les champs saisis.", langue)
+      : traduireMessage(shape.message, langue);
+    return { ...shape, message };
+  },
 });
 
 export const createRouter = t.router;

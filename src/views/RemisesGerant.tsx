@@ -76,21 +76,21 @@ export function PanneauRemisesGerant({ terrasseId }: { terrasseId: string }) {
         return (
           <Carte classe="border-ambre/30">
             <p className="mb-2 flex items-center gap-2 font-bold text-white">
-              <Coins className="h-5 w-5 text-ambre" /> Où est l'argent ?
+              <Coins className="h-5 w-5 text-ambre" /> {t('note.cash_ou_titre')}
             </p>
             {etat.cashParEmploye.length > 0 ? (
               <>
-                <p className="text-xs text-sable/60 mb-1">Cash en main (non remis)</p>
+                <p className="text-xs text-sable/60 mb-1">{t('note.cash_en_main')}</p>
                 {etat.cashParEmploye.map((e) => (
                   <div key={e.nom} className="flex justify-between text-sm py-0.5">
                     <span className="text-white">{e.nom}</span>
                     <span className="font-mono font-bold text-ambre">{fmtCDF(e.cdf)}</span>
                   </div>
                 ))}
-                <p className="mt-1 text-xs text-sable/50">Total : <b>{fmtCDF(totalCash)}</b></p>
+                <p className="mt-1 text-xs text-sable/50">{t('note.cash_total')} : <b>{fmtCDF(totalCash)}</b></p>
               </>
             ) : (
-              <p className="text-xs text-sable/60">Aucun cash en main.</p>
+              <p className="text-xs text-sable/60">{t('note.cash_aucun')}</p>
             )}
             {(etat.chezGerant.cdf > 0 || etat.chezGerant.usd > 0) && (
               <p className="mt-2 text-sm text-sable">
@@ -108,13 +108,12 @@ export function PanneauRemisesGerant({ terrasseId }: { terrasseId: string }) {
             )}
             {etat.declarationsEnAttente > 0 && (
               <p className="mt-2 text-sm text-ambre">
-                <b>{etat.declarationsEnAttente}</b> déclaration(s) en attente de validation.
+                {t('note.declarations_attente', { n: etat.declarationsEnAttente })}
               </p>
             )}
             {etat.notesImpayees.nb > 0 && (
               <p className="mt-1 text-sm text-danger-clair">
-                <b>{etat.notesImpayees.nb}</b> note(s) impayée(s) : {fmtCDF(etat.notesImpayees.cdf)}
-                {etat.notesImpayees.usd > 0 ? ` + ${fmtUSD(etat.notesImpayees.usd)}` : ''}
+                {t('note.notes_impayees', { n: etat.notesImpayees.nb, montant: `${fmtCDF(etat.notesImpayees.cdf)}${etat.notesImpayees.usd > 0 ? ` + ${fmtUSD(etat.notesImpayees.usd)}` : ''}` })}
               </p>
             )}
           </Carte>
@@ -187,7 +186,7 @@ export function PanneauRemisesGerant({ terrasseId }: { terrasseId: string }) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-bold text-white">{employe?.nom ?? '—'}</p>
-                    <p className="text-xs text-sable/55">{ilYA(d.declareLe)} · {d.typeDepot === 'CHAMBRE' ? 'Chambre' : 'Commandes'}</p>
+                    <p className="text-xs text-sable/55">{ilYA(d.declareLe)} · {d.typeDepot === 'CHAMBRE' ? t('hotel.chambre_mot') : t('note.depot_commandes')}</p>
                   </div>
                   <div className="text-right">
                     <Pill ton={ecart ? 'rouge' : 'ambre'}>{t('note.a_valider')}</Pill>

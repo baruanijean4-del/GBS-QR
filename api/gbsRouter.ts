@@ -26,7 +26,7 @@ import { DEMO_PINS } from "../db/fixtures-demo";
 import { SUPER_ADMIN_ID, assurerSuperAdmin } from "./lib/superAdmin";
 import { peutAvecRoles, surchargesPour } from "./lib/permissions";
 import { erreursGroupees } from "./lib/erreursClient";
-import { chargerPourClient, chargerPublic, chargerTout, filtrerParPortee, tickAbonnementsSiNecessaire } from "./gbsSnapshot";
+import { chargerPourClient, chargerPublic, chargerTout, filtrerParPortee, tickAbonnementsSiNecessaire, traduireAlertes } from "./gbsSnapshot";
 import {
   ajouterJours, ajouterMois, codeInvitation, fmtCDF, fmtUSD, joursRestants,
   maintenant, remiseMulti, tarifDe, tokenQR, tranchePourTables, uid,
@@ -153,7 +153,7 @@ export async function exigerProprietaire(acteurId: string, terrasseId: string) {
     await journaliser(acteurId, null, "ACCES_REFUSE", `Modification stock/prix tentée sur ${t?.nom ?? terrasseId}`);
     erreur("Seul le Propriétaire modifie le stock et les prix.");
   }
-  if (!(await ecriturePermiseDb(terrasseId))) erreur("Terrasse en lecture seule : modification impossible.");
+  if (!(await ecriturePermiseDb(terrasseId))) erreur("Établissement en lecture seule : modification impossible.");
 }
 
 export async function exigerGerantOuProprio(acteurId: string, terrasseId: string): Promise<RoleActif> {
@@ -323,14 +323,14 @@ export const gbsRouter = createRouter({
       // les écrans staff/admin gardent l'image complète (chargerTout).
       if (portee.kind === "client") {
         const partiel = await chargerPourClient(portee);
-        return filtrerParPortee(partiel, portee);
+        return traduireAlertes(filtrerParPortee(partiel, portee), ctx.langue);
       }
       if (portee.kind === "public") {
         const partiel = await chargerPublic();
-        return filtrerParPortee(partiel, portee);
+        return traduireAlertes(filtrerParPortee(partiel, portee), ctx.langue);
       }
       const tout = await chargerTout();
-      return filtrerParPortee(tout, portee);
+      return traduireAlertes(filtrerParPortee(tout, portee), ctx.langue);
     }),
 
   /** Vérification du PIN super-admin (porte d'entrée de la page /admin).
@@ -945,7 +945,7 @@ export const gbsRouter = createRouter({
     .input(z.object({ terrasseId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       const serveuseId = ctx.session.utilisateurId;
-      if (!(await ecriturePermiseDb(input.terrasseId))) erreur("Terrasse en lecture seule.");
+      if (!(await ecriturePermiseDb(input.terrasseId))) erreur("Établissement en lecture seule.");
       const [deja] = await db().select().from(s.sessionsService)
         .where(and(
           eq(s.sessionsService.terrasseId, input.terrasseId),
@@ -1218,7 +1218,7 @@ export const gbsRouter = createRouter({
       if (input.montantCdf <= 0 && input.montantUsdCentimes <= 0) {
         erreur("Indiquez un montant en francs ou en dollars.");
       }
-      if (!(await ecriturePermiseDb(input.terrasseId))) erreur("Terrasse en lecture seule : action impossible.");
+      if (!(await ecriturePermiseDb(input.terrasseId))) erreur("Établissement en lecture seule : action impossible.");
       const roles = await rolesSurDb(acteurId, input.terrasseId);
       if (!roles.includes("PROPRIETAIRE") && !roles.includes("GERANT")) {
         await journaliser(acteurId, null, "ACCES_REFUSE", `Dépense tentée (${input.motif})`);
@@ -1309,7 +1309,7 @@ export const gbsRouter = createRouter({
             eq(s.affectations.role, "SERVEUSE"),
             eq(s.affectations.actif, true),
           )).limit(1);
-        if (!ok) erreur("Cette personne n'est pas serveuse sur cette terrasse.");
+        if (!ok) erreur("Cette personne n'est pas serveuse dans cet établissement.");
       }
       await db().update(s.tableServeuse).set({ actif: false })
         .where(and(eq(s.tableServeuse.tableId, input.tableId), eq(s.tableServeuse.actif, true)));
@@ -1506,7 +1506,7 @@ export const gbsRouter = createRouter({
             eq(s.affectations.actif, true),
           )).limit(1);
         if (conflit && conflit.role !== inv.role) {
-          erreur("Conflit de rôles : Serveuse et Gérant sur la même terrasse est interdit.");
+          erreur("Conflit de rôles : Serveuse et Gérant dans le même établissement est interdit.");
         }
       } else {
         await db().insert(s.utilisateurs).values({
@@ -1704,7 +1704,7 @@ export const gbsRouter = createRouter({
           const [t] = await db().select().from(s.terrasses).where(eq(s.terrasses.id, p.terrasseId)).limit(1);
           const fin = ajouterMois(base, abo.annuel ? 12 : 1);
           await alerter(p.terrasseId, "ABONNEMENT",
-            `Paiement validé : « ${t?.nom} » est active jusqu'au ${new Date(fin).toLocaleDateString("fr-FR")}.`);
+            `Paiement validé : l'établissement « ${t?.nom} » est actif jusqu'au ${new Date(fin).toLocaleDateString("fr-FR")}.`);
         }
       }
       await journaliser("super_admin", "SUPER_ADMIN", `PAIEMENT_${input.decision}`, `${fmtUSD(p.montantUsd)} — réf ${p.reference}`);
@@ -1737,7 +1737,7 @@ export const gbsRouter = createRouter({
     .mutation(async ({ input, ctx }) => {
       // Réservé au staff de la terrasse (le jeton prouve l'identité, on vérifie l'appartenance)
       const roles = await rolesSurDb(ctx.session.utilisateurId, input.terrasseId);
-      if (roles.length === 0) erreur("Vous n'avez pas accès à cette terrasse.");
+      if (roles.length === 0) erreur("Vous n'avez pas accès à cet établissement.");
       await db().update(s.alertes).set({ lu: true }).where(eq(s.alertes.terrasseId, input.terrasseId));
       return { ok: true as const };
     }),
@@ -1749,7 +1749,7 @@ export const gbsRouter = createRouter({
       // la prochaine connexion, même depuis un autre appareil, la retrouve.
       const roles = await rolesSurDb(ctx.session.utilisateurId, input.terrasseId);
       const [te] = await db().select().from(s.terrasses).where(eq(s.terrasses.id, input.terrasseId)).limit(1);
-      if (roles.length === 0 || !te) erreur("Vous n'avez pas accès à cette terrasse.");
+      if (roles.length === 0 || !te) erreur("Vous n'avez pas accès à cet établissement.");
       await db().update(s.organisations).set({ langue: input.langue }).where(eq(s.organisations.id, te.organisationId));
       return { ok: true as const };
     }),
@@ -1850,7 +1850,7 @@ async function libererStockDb(commandeId: string) {
 async function commandePourRoleDb(commandeId: string, acteurId: string) {
   const [c] = await db().select().from(s.commandes).where(eq(s.commandes.id, commandeId)).limit(1);
   if (!c) erreur("Commande introuvable.");
-  if (!(await ecriturePermiseDb(c.terrasseId))) erreur("Terrasse en lecture seule : action impossible.");
+  if (!(await ecriturePermiseDb(c.terrasseId))) erreur("Établissement en lecture seule : action impossible.");
   const roles = await rolesSurDb(acteurId, c.terrasseId);
   if (!roles.includes("SERVEUSE") && !roles.includes("GERANT") && !roles.includes("PROPRIETAIRE")) {
     erreur("Vous n'avez pas accès à cette commande.");

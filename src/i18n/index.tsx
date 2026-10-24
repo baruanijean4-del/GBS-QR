@@ -10,7 +10,8 @@
 // INDÉPENDANT de ce socle (il doit marcher même si tout casse).
 // ============================================================
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react'
+import { defFusionnee, type TypeEtablissement } from '@contracts/types'
 import fr from './fr.json'
 
 export type Langue = 'fr' | 'en' | 'pt' | 'sw'
@@ -62,6 +63,45 @@ export function assurerDico(l: Langue): Promise<void> {
 }
 
 
+// ------------------------------------------------------------
+// Vocabulaire métier : le registre TYPES_ETABLISSEMENT nomme la zone de
+// vente de chaque type (table, chambre, comptoir, billard) dans les 4
+// langues. t() injecte automatiquement, pour l'établissement affiché :
+//   {zone} {zones} {Zone} {Zones}  — le mot (minuscule / majuscule initiale)
+//   {un} {le} {ce} {du} {au}       — articles accordés (fr, pt) ; {ce} aussi
+//                                    en swahili (hii / hiki)
+// Les textes évitent les accords d'adjectifs (« assignée ») : on écrit
+// « {Zone} {numero} : … » plutôt que « {Zone} assigné(e) ».
+// ------------------------------------------------------------
+
+/** Établissement affiché (type principal + types fusionnés) */
+export interface EtablissementCourant { type: TypeEtablissement; secondaires: TypeEtablissement[] }
+
+const FEMININS_FR = new Set(['table', 'chambre'])
+const FEMININS_PT = new Set(['mesa'])
+const CACHE_VOCAB = new Map<string, Record<string, string>>()
+
+/** Variables de vocabulaire pour un établissement (TERRASSE → « table » par défaut). */
+export function vocabulaireDe(
+  langue: Langue, type: TypeEtablissement = 'TERRASSE', secondaires: readonly TypeEtablissement[] = [],
+): Record<string, string> {
+  const cle = `${langue}|${type}|${secondaires.join(',')}`
+  const connu = CACHE_VOCAB.get(cle)
+  if (connu) return connu
+  const def = defFusionnee(type, secondaires)
+  const zone = def.zone[langue]
+  const zones = def.zones[langue]
+  const maj = (s: string) => s.charAt(0).toLocaleUpperCase(LOCALES[langue]) + s.slice(1)
+  const f = langue === 'fr' ? FEMININS_FR.has(def.zone.fr) : langue === 'pt' ? FEMININS_PT.has(def.zone.pt) : false
+  const choix = (si: string, sinon: string) => (f ? si : sinon)
+  const v: Record<string, string> = { zone, zones, Zone: maj(zone), Zones: maj(zones), un: '', le: '', ce: '', du: '', au: '' }
+  if (langue === 'fr') Object.assign(v, { un: choix('une', 'un'), le: choix('la', 'le'), ce: choix('cette', 'ce'), du: choix('de la', 'du'), au: choix('à la', 'au') })
+  if (langue === 'pt') Object.assign(v, { un: choix('uma', 'um'), le: choix('a', 'o'), ce: choix('esta', 'este'), du: choix('da', 'do'), au: choix('na', 'no') })
+  if (langue === 'sw') v.ce = def.zone.sw === 'chumba' ? 'hiki' : 'hii'
+  CACHE_VOCAB.set(cle, v)
+  return v
+}
+
 /** Traduction avec chaîne de repli : langue → REPLIS[langue]… → clé brute */
 function traduireDepuis(langue: Langue, cle: string, vars?: Record<string, string | number>): string {
   let texte: string | undefined = DICOS[langue][cle]
@@ -105,8 +145,11 @@ export interface I18n {
   /** Change la langue (mémorisée sur l'appareil ; synchronisée sur
    *  l'organisation par le store quand une session existe). */
   setLangue: (l: Langue) => void
-  /** Traduit une clé ; {vars} interpolées ; repli pt→en→fr→clé. */
+  /** Traduit une clé ; {vars} interpolées ; repli pt→en→fr→clé. Le vocabulaire
+   *  de l'établissement affiché ({zone}, {Zones}…) est ajouté automatiquement. */
   t: (cle: string, vars?: Record<string, string | number>) => string
+  /** Établissement affiché (null = vocabulaire par défaut) — voir useEtablissementCourant */
+  definirEtablissement: (e: EtablissementCourant | null) => void
 }
 
 const ContexteI18n = createContext<I18n | null>(null)
@@ -118,6 +161,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   })
   // Re-rendu quand un dictionnaire paresseux finit de charger
   const [versionDicos, setVersionDicos] = useState(0)
+  // Établissement affiché : choisit le vocabulaire (table / chambre / comptoir…)
+  const [etab, setEtab] = useState<EtablissementCourant | null>(null)
+  const definirEtablissement = useCallback((e: EtablissementCourant | null) => {
+    setEtab((avant) => {
+      const cle = (x: EtablissementCourant | null) => (x ? `${x.type}|${x.secondaires.join(',')}` : '')
+      return cle(avant) === cle(e) ? avant : e
+    })
+  }, [])
 
   useEffect(() => {
     document.documentElement.lang = langue
@@ -142,10 +193,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       if (l === 'fr') { langueActive = l; setLangueEtat(l); return }
       void assurerDico(l).then(() => { langueActive = l; setLangueEtat(l) })
     },
-    t: (cle, vars) => traduireDepuis(langue, cle, vars),
+    t: (cle, vars) => traduireDepuis(langue, cle, { ...vocabulaireDe(langue, etab?.type, etab?.secondaires), ...vars }),
+    definirEtablissement,
     // versionDicos : force le recalcul de t après chargement paresseux
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [langue, versionDicos])
+  }), [langue, versionDicos, etab, definirEtablissement])
 
   return <ContexteI18n.Provider value={valeur}>{children}</ContexteI18n.Provider>
 }
@@ -162,6 +214,24 @@ export function useT(): I18n['t'] {
   return useI18n().t
 }
 
+/**
+ * Déclare l'établissement affiché par l'écran : tous les t() en dessous parlent
+ * « table », « chambre », « comptoir » ou « billard » selon son type.
+ * À appeler UNE fois par écran (garde d'accès staff, vue client).
+ */
+export function useEtablissementCourant(
+  terrasse: { type: TypeEtablissement; typesSecondaires?: TypeEtablissement[] } | null | undefined,
+): void {
+  const { definirEtablissement } = useI18n()
+  const cle = terrasse ? `${terrasse.type}|${(terrasse.typesSecondaires ?? []).join(',')}` : ''
+  useLayoutEffect(() => {
+    definirEtablissement(terrasse ? { type: terrasse.type, secondaires: terrasse.typesSecondaires ?? [] } : null)
+    return () => definirEtablissement(null)
+    // cle résume le type et les types fusionnés
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cle, definirEtablissement])
+}
+
 /** Langue actuellement choisie — lecture hors React (format.ts, PDF). */
 export function langueCourante(): Langue {
   if (langueActive) return langueActive
@@ -174,5 +244,5 @@ export function langueCourante(): Langue {
 
 /** Traduction hors React (même repli que le hook) — formatage, rapports PDF. */
 export function traduire(cle: string, vars?: Record<string, string | number>): string {
-  return traduireDepuis(langueCourante(), cle, vars)
+  return traduireDepuis(langueCourante(), cle, { ...vocabulaireDe(langueCourante()), ...vars })
 }

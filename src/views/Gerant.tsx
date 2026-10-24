@@ -583,10 +583,10 @@ export function QRGerant({ terrasseId }: { terrasseId: string }) {
                 </div>
               </div>
               <p className="font-mono text-xl font-black text-white">
-                {table.kind === 'CHAMBRE' ? 'Chambre' : t('serveuse.table_mot')} {table.numero}
+                {table.kind === 'CHAMBRE' ? t('hotel.chambre_mot') : t('serveuse.table_mot')} {table.numero}
               </p>
-              <p className="text-[10px] text-sable/70 leading-tight">{terrasse.adresse || 'Adresse non renseignée'}</p>
-              <p className="text-[9px] text-sable/40 italic mt-1">Scannez pour commander</p>
+              <p className="text-[10px] text-sable/70 leading-tight">{terrasse.adresse || t('gerant.adresse_absente')}</p>
+              <p className="text-[9px] text-sable/40 italic mt-1">{t('gerant.qr_scannez')}</p>
               <p className="text-xs text-sable/60">
                 {serveuse ? serveuse.nom : t('gerant.non_assignee')}
               </p>

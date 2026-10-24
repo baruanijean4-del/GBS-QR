@@ -26,7 +26,7 @@ import { FournisseurPortee, annulerMaCommande, contexteTable, ecriturePermise, n
   ouvrirSessionClient, passerCommande, serveuseDeTable, useDB, useDBPret, utilisateurDe, prolongerSejour } from '@/lib/store'
 import type { Commande, LigneCommande, Portee, Produit } from '@/lib/types'
 import { TYPES_RECHERCHE_PRODUIT } from '@/lib/types'
-import { useT } from '@/i18n'
+import { useT, useEtablissementCourant } from '@/i18n'
 import { ajouterALaFile, lireFile, retirerDeLaFile } from '@/lib/outbox'
 import { defFusionnee } from '@contracts/types'
 
@@ -113,6 +113,9 @@ function VueClientInterne({ token, client, setClient }: {
     }
   }, [db, token])
 
+  // Vocabulaire du client : table / chambre / comptoir selon l'établissement scanné
+  useEtablissementCourant(contexte?.terrasse)
+
   useEffect(() => {
     const enMarche = async () => {
       setEnLigne(true)
@@ -164,9 +167,9 @@ function VueClientInterne({ token, client, setClient }: {
   if (estBillard) {
     ongletsDisponibles.push({ id: 'billard', label: t('billard.onglet') })
   } else if (estChambre) {
-    ongletsDisponibles.push({ id: 'chambre', label: 'Ma chambre' })
+    ongletsDisponibles.push({ id: 'chambre', label: t('client.onglet_ma_chambre') })
   } else if (estTerrasse) {
-    ongletsDisponibles.push({ id: 'chambres', label: 'Chambres' })
+    ongletsDisponibles.push({ id: 'chambres', label: t('client.onglet_chambres') })
   }
   
   // 2. Menu
@@ -370,12 +373,12 @@ function VueClientInterne({ token, client, setClient }: {
       ) : onglet === 'chambre' ? (
         <div className="px-4 pt-4">
           <Carte>
-            <p className="text-lg font-bold text-white">{estChambre ? 'Chambre ' : 'Table '}{table.numero}</p>
+            <p className="text-lg font-bold text-white">{estChambre ? t('hotel.chambre_n', { n: table.numero }) : t('client.table', { numero: table.numero })}</p>
             <p className="mt-1 text-sm text-sable/70">{terrasse.nom}</p>
             <div className="mt-4 flex flex-col gap-2">
-              <GrosBouton onClick={() => setOnglet('menu')}>Commander le petit-déjeuner</GrosBouton>
-              <GrosBouton ton="secondaire" onClick={() => toast.info('Appel à la réception envoyé.')}>Appeler la réception</GrosBouton>
-              <GrosBouton ton="secondaire" onClick={() => setProlongation(true)}>Prolonger le séjour</GrosBouton>
+              <GrosBouton onClick={() => setOnglet('menu')}>{t('client.petit_dejeuner')}</GrosBouton>
+              <GrosBouton ton="secondaire" onClick={() => toast.info(t('client.appel_reception_envoye'))}>{t('client.appeler_reception')}</GrosBouton>
+              <GrosBouton ton="secondaire" onClick={() => setProlongation(true)}>{t('client.prolonger_sejour')}</GrosBouton>
             </div>
           </Carte>
         </div>
@@ -469,21 +472,21 @@ function VueClientInterne({ token, client, setClient }: {
         <p className="mt-3 text-center text-xs text-sable/50">{t('client.table_paiement', { numero: table.numero })}</p>
       </Feuille>
 
-      <Feuille ouvert={prolongation} surFermer={() => setProlongation(false)} titre="Prolonger le séjour">
+      <Feuille ouvert={prolongation} surFermer={() => setProlongation(false)} titre={t('client.prolonger_sejour')}>
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-sable/80">Choisissez la durée de la prolongation :</p>
+          <p className="text-sm text-sable/80">{t('client.prolongation_duree')}</p>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setProlongationMode('NUIT')}
               className={`rounded-2xl border px-4 py-3 text-sm font-bold ${prolongationMode === 'NUIT' ? 'border-ambre bg-ambre/15 text-ambre' : 'border-white/10 text-sable/60'}`}
             >
-              1 nuit
+              {t('client.une_nuit')}
             </button>
             <button
               onClick={() => setProlongationMode('HEURE')}
               className={`rounded-2xl border px-4 py-3 text-sm font-bold ${prolongationMode === 'HEURE' ? 'border-ambre bg-ambre/15 text-ambre' : 'border-white/10 text-sable/60'}`}
             >
-              1 heure
+              {t('client.une_heure')}
             </button>
           </div>
           <GrosBouton
@@ -494,15 +497,15 @@ function VueClientInterne({ token, client, setClient }: {
               void (async () => {
                 try {
                   await prolongerSejour({ token, clientSessionId: client.sessionId, mode: prolongationMode })
-                  toast.success('Prolongation ajoutée à votre note !')
+                  toast.success(t('client.prolongation_ajoutee'))
                   setProlongation(false)
                   window.location.reload()
-                } catch (e) { toast.error(e instanceof Error ? e.message : 'Erreur lors de la prolongation.') }
+                } catch (e) { toast.error(e instanceof Error ? e.message : t('client.prolongation_erreur')) }
                 finally { setProlongationCharge(false) }
               })()
             }}
           >
-            Confirmer la prolongation
+            {t('client.prolongation_confirmer')}
           </GrosBouton>
         </div>
       </Feuille>
@@ -590,7 +593,7 @@ function FeuilleTicket({ commande, surFermer }: { commande: Commande; surFermer:
           ))}
         </div>
         <div className="flex items-center justify-between border-t border-white/8 pt-3">
-          <span className="text-sm font-bold text-sable">TOTAL</span>
+          <span className="text-sm font-bold text-sable">{t('client.total_ticket')}</span>
           <Money cdf={commande.totalCdf} usd={commande.totalUsdCentimes} gros />
         </div>
         <p className="mt-3 text-center text-xs text-sable/50">{t('client.ticket_merci')}</p>

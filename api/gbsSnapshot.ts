@@ -8,6 +8,7 @@ import { getDb } from "./queries/connection";
 import * as s from "@db/schema";
 import type { DB, Portee, Produit, SourcePhoto, TableT, TypeEtablissement, TypeProduit } from "@contracts/types";
 import { ajouterJours, joursRestants, maintenant, uid } from "./gbsUtils";
+import { traduireMessage, type LangueServeur } from "./lib/traductionServeur";
 
 /** Traduit une ligne `tables_qr` (Drizzle) vers le contrat TableT partagé.
  *  kind : varchar en base → union stricte côté contrat (défaut ZONE). */
@@ -462,6 +463,13 @@ export function filtrerParPortee(db: DB, portee: Portee): DB {
 
 // Le cycle de vie est quotidien : inutile de rejouer les transitions à chaque
 // snapshot (2-3 aller-retours DB séquentiels). Une exécution par heure suffit.
+/** Traduit les messages d'alerte (écrits en français en base) dans la langue
+ *  du client — les notifications suivent la langue choisie. */
+export function traduireAlertes(image: DB, langue: LangueServeur): DB {
+  if (langue === "fr" || !image.alertes?.length) return image;
+  return { ...image, alertes: image.alertes.map((a) => ({ ...a, message: traduireMessage(a.message, langue) })) };
+}
+
 let dernierTick = 0;
 
 /** N'exécute le tick que si la dernière exécution date de plus d'une heure */
@@ -496,7 +504,7 @@ export async function tickAbonnements() {
         await db.update(s.abonnements).set({ statut: "LECTURE_SEULE" }).where(eq(s.abonnements.id, abo.id))
         await db.insert(s.alertes).values({
           id: uid("alt"), terrasseId: abo.terrasseId, type: "ABONNEMENT", lu: false, creeLe: maintenantIso,
-          message: `L'essai de « ${nom} » est terminé : la terrasse est en lecture seule. Payez pour réactiver.`,
+          message: `L'essai de « ${nom} » est terminé : l'établissement est en lecture seule. Payez pour réactiver.`,
         })
       }
     } else if (abo.statut === "ACTIF" && maintenantIso > abo.periodeFin) {
@@ -509,13 +517,13 @@ export async function tickAbonnements() {
       await db.update(s.abonnements).set({ statut: "LECTURE_SEULE" }).where(eq(s.abonnements.id, abo.id))
       await db.insert(s.alertes).values({
         id: uid("alt"), terrasseId: abo.terrasseId, type: "ABONNEMENT", lu: false, creeLe: maintenantIso,
-        message: `« ${nom} » est passée en lecture seule (impayé).`,
+        message: `L'établissement « ${nom} » est passé en lecture seule (impayé).`,
       })
     } else if (abo.statut === "LECTURE_SEULE" && maintenantIso > ajouterJours(abo.periodeFin, 60)) {
       await db.update(s.abonnements).set({ statut: "SUSPENDU" }).where(eq(s.abonnements.id, abo.id))
       await db.insert(s.alertes).values({
         id: uid("alt"), terrasseId: abo.terrasseId, type: "ABONNEMENT", lu: false, creeLe: maintenantIso,
-        message: `« ${nom} » est suspendue après 60 jours d'impayé. Aucune donnée n'est supprimée.`,
+        message: `L'établissement « ${nom} » est suspendu après 60 jours d'impayé. Aucune donnée n'est supprimée.`,
       })
     }
   }

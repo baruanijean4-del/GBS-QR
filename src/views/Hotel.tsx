@@ -121,7 +121,7 @@ export function PanneauHotel({ terrasseId, mode }: { terrasseId: string; mode: M
                 className={`flex flex-col items-start gap-1 overflow-hidden rounded-2xl border text-left active:scale-[0.98] ${style.cadre}`}
               >
                 {c.photoUrl && (
-                  <img src={c.photoUrl} alt={`Chambre ${c.numero}`} className="h-24 w-full object-cover" />
+                  <img src={c.photoUrl} alt={t('hotel.chambre_n', { n: c.numero })} className="h-24 w-full object-cover" />
                 )}
                 <div className="flex w-full items-center justify-between px-3 pt-3">
                   <span className="font-mono text-lg font-bold text-white">{c.numero}</span>
@@ -364,7 +364,7 @@ function FeuilleCreation({ terrasseId, surFermer, surFait }: {
         <SaisieNombre valeur={prixNuit} onChange={setPrixNuit} placeholder="40000" />
         <label className="text-xs font-bold uppercase tracking-widest text-sable/50">{t('hotel.prix_heure')}</label>
         <SaisieNombre valeur={prixHeure} onChange={setPrixHeure} placeholder={t('hotel.prix_heure_ph')} />
-        <label className="text-xs font-bold uppercase tracking-widest text-sable/50">URL de la photo</label>
+        <label className="text-xs font-bold uppercase tracking-widest text-sable/50">{t('hotel.photo_url')}</label>
         <input
           className={classeSaisie}
           value={photoUrl}
@@ -372,7 +372,7 @@ function FeuilleCreation({ terrasseId, surFermer, surFait }: {
           placeholder="https://example.com/photo.jpg"
         />
         {photoUrl && !photoUrl.startsWith('data:') && (
-          <img src={photoUrl} alt="Chambre" className="h-32 w-full rounded-xl object-cover" />
+          <img src={photoUrl} alt={t('hotel.chambre_mot')} className="h-32 w-full rounded-xl object-cover" />
         )}
         <GrosBouton
           charge={charge}
@@ -460,9 +460,9 @@ function FeuilleModification({ chambre, surFermer, surFait }: {
   const [charge, setCharge] = useState(false)
 
   return (
-    <Feuille ouvert surFermer={surFermer} titre={`Modifier la chambre ${chambre.numero}`}>
+    <Feuille ouvert surFermer={surFermer} titre={t('hotel.modifier_chambre', { n: chambre.numero })}>
       <div className="flex flex-col gap-3">
-        <label className="text-xs font-bold uppercase tracking-widest text-sable/50">URL de la photo</label>
+        <label className="text-xs font-bold uppercase tracking-widest text-sable/50">{t('hotel.photo_url')}</label>
         <input
           className={classeSaisie}
           value={photoUrl}
@@ -470,7 +470,7 @@ function FeuilleModification({ chambre, surFermer, surFait }: {
           placeholder="https://example.com/photo.jpg"
         />
         {photoUrl && !photoUrl.startsWith('data:') && (
-          <img src={photoUrl} alt={`Chambre ${chambre.numero}`} className="h-32 w-full rounded-xl object-cover" />
+          <img src={photoUrl} alt={t('hotel.chambre_n', { n: chambre.numero })} className="h-32 w-full rounded-xl object-cover" />
         )}
         <GrosBouton
           charge={charge}
@@ -481,7 +481,7 @@ function FeuilleModification({ chambre, surFermer, surFait }: {
               try {
                 // On envoie simplement l'URL (ou null si vide)
                 await modifierChambreHotel({ chambreId: chambre.id, photoUrl: photoUrl.trim() || null })
-                toast.success('Photo mise à jour !')
+                toast.success(t('hotel.photo_maj'))
                 surFait()
               } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
               finally { setCharge(false) }

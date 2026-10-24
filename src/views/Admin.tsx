@@ -12,7 +12,7 @@ import { dateCourte, dateHeure, fmtUSD, joursRestants } from '@/lib/format'
 import { telechargerRapportConsommation } from '@/lib/rapportPdf'
 import { naviguer } from '@/lib/router'
 import { PLANS, nbTablesActives } from '@/lib/pricing'
-import { useT } from '@/i18n'
+import { useI18n, useT, vocabulaireDe } from '@/i18n'
 import { trpc } from '@/providers/trpc'
 import {
   FournisseurPortee, modifierTarif, mrrPlateforme, produitPhare, terrasseDe, useDB, useDBPret,
@@ -111,7 +111,7 @@ function VueAdminInterne({ pin }: { pin: string }) {
         <Carte classe="!p-3 text-center">
           <TrendingUp className="mx-auto h-4 w-4 text-ambre" />
           <p className="mt-1 font-mono text-lg font-bold text-white">{fmtUSD(mrr)}</p>
-          <p className="text-[10px] uppercase text-sable/50">MRR</p>
+          <p className="text-[10px] uppercase text-sable/50">{t('admin.mrr')}</p>
         </Carte>
         <Carte classe="!p-3 text-center">
           <CreditCard className="mx-auto h-4 w-4 text-succes-clair" />
@@ -427,6 +427,7 @@ function PinOublieAdmin({ pin }: { pin: string }) {
 
 function TerrassesAdmin() {
   const t = useT()
+  const { langue } = useI18n()
   const db = useDB()
 
   if (db.terrasses.length === 0) {
@@ -469,7 +470,7 @@ function TerrassesAdmin() {
                 <p className="flex items-center gap-1 text-xs text-sable/60">
                   <MapPin className="h-3 w-3 shrink-0" /> {te.adresse}
                 </p>
-                <p className="mt-0.5 text-xs text-sable/50">{t('admin.resume_terrasse', { proprio: proprio?.nom ?? '—', tables: nbTables, membres: equipe, s: equipe > 1 ? 's' : '' })}</p>
+                <p className="mt-0.5 text-xs text-sable/50">{t('admin.resume_terrasse', { proprio: proprio?.nom ?? '—', tables: nbTables, zones: vocabulaireDe(langue, te.type, te.typesSecondaires).zones, membres: equipe, s: equipe > 1 ? 's' : '' })}</p>
               </div>
               {abo && (
                 <Pill ton={abo.statut === 'ACTIF' ? 'vert' : abo.statut === 'ESSAI' ? 'bleu' : abo.statut === 'EN_GRACE' ? 'ambre' : 'rouge'}>
@@ -489,7 +490,7 @@ function TerrassesAdmin() {
                 <p className="text-[10px] text-sable/40">{phare ? t('admin.vendus', { n: phare.qte }) : t('admin.aucune_vente')}</p>
               </div>
               <div className="rounded-xl bg-white/5 p-2.5">
-                <p className="flex items-center justify-center gap-1 text-[10px] uppercase text-sable/50"><Package className="h-3 w-3" /> Stock</p>
+                <p className="flex items-center justify-center gap-1 text-[10px] uppercase text-sable/50"><Package className="h-3 w-3" /> {t('admin.stock')}</p>
                 <p className="mt-0.5 font-mono text-sm font-bold text-white">{stockTotal}</p>
                 <p className={`text-[10px] ${stockBas > 0 ? 'font-semibold text-danger-clair' : 'text-sable/40'}`}>{stockBas > 0 ? t('admin.stock_bas_nb', { n: stockBas }) : t('admin.stock_sain')}</p>
               </div>

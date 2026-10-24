@@ -1,5 +1,6 @@
 import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 import { jetonDepuisEntete, verifierSessionActive } from "./lib/session";
+import { langueDepuisEntete, type LangueServeur } from "./lib/traductionServeur";
 
 /** Identité authentifiée extraite du jeton Bearer (null = non connecté) */
 export type SessionAuth = {
@@ -15,6 +16,8 @@ export type TrpcContext = {
   session: SessionAuth | null;
   /** IP du client (proxy : X-Forwarded-For) — sert à l'anti-brute-force */
   ip: string;
+  /** Langue du client (en-tête x-lang) — traduit les messages d'erreur et d'alerte */
+  langue: LangueServeur;
 };
 
 export async function createContext(
@@ -38,5 +41,6 @@ export async function createContext(
     resHeaders: opts.resHeaders,
     session: verifiee ? { utilisateurId: verifiee.payload.utilisateurId, sid: verifiee.payload.sid } : null,
     ip,
+    langue: langueDepuisEntete(opts.req.headers.get("x-lang")),
   };
 }

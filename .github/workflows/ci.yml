@@ -39,6 +39,10 @@ jobs:
       - name: Vérification TypeScript
         run: npm run check
 
+      # Quatre langues à clés identiques, aucune valeur vide, aucun texte français en dur
+      - name: Contrôle i18n
+        run: npm run i18n
+
       # Les tests frappent une vraie base Neon dédiée à la CI
       # (les suites créent leurs propres fixtures et les nettoient).
       - name: Tests

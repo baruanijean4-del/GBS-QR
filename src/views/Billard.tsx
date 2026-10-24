@@ -223,10 +223,10 @@ export function OngletBillardClient({ token, sessionId }: { token: string; sessi
       {/* Confirmations */}
       <Feuille ouvert={confirmeAchat} surFermer={() => setConfirmeAchat(false)} titre={t('billard.prendre_ticket_titre')}>
         <p className="mb-4 text-sm text-sable/80">
-          Le ticket coûte {fmtCDF(f.prixTokenCdf)}. Il sera ajouté à votre note. Vous pouvez commander d'autres articles et payer le tout à la fin.
+          {t('billard.ticket_ajoute_d', { prix: fmtCDF(f.prixTokenCdf) })}
         </p>
         <GrosBouton onClick={() => void acheter()}>
-          <Plus className="h-5 w-5" /> Ajouter à ma note ({fmtCDF(f.prixTokenCdf)})
+          <Plus className="h-5 w-5" /> {t('billard.ajouter_note', { prix: fmtCDF(f.prixTokenCdf) })}
         </GrosBouton>
       </Feuille>
       <Confirmation

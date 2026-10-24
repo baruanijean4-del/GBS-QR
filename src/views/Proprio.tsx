@@ -42,7 +42,7 @@ import {
   aTablesDeSalle, categoriesPour, defFusionnee, fraisInstallationPour, tousLesTypes, typeProduitParDefaut,
   TYPES_SANS_STOCK, type CategorieProduit, type RoleEtablissement, type TypeProduit,
 } from '@contracts/types'
-import { LOCALES, useI18n, useT } from '@/i18n'
+import { LOCALES, useI18n, useT, vocabulaireDe } from '@/i18n'
 import type { DB, Paiement, Portee, Produit, SessionLocale, Terrasse, TypeMouvement, Utilisateur } from '@/lib/types'
 
 export function VueProprio() {
@@ -147,7 +147,7 @@ function EspaceProprio({ moi, terrasse, session }: { moi: Utilisateur; terrasse:
               >
                 <div>
                   <p className="font-bold text-white">{te.nom}</p>
-                  <p className="text-xs text-sable/60">{t('proprio.terrasses_resume', { tables: nbTablesActives(db, te.id), ventes: v.nb })}</p>
+                  <p className="text-xs text-sable/60">{t('proprio.terrasses_resume', { tables: nbTablesActives(db, te.id), ventes: v.nb, zones: vocabulaireDe(langue, te.type, te.typesSecondaires).zones })}</p>
                 </div>
                 <Money cdf={v.cdf} usd={v.usdCentimes} />
               </button>
