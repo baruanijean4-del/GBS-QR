@@ -1040,3 +1040,32 @@ export const traiteurComptages = pgTable(
   },
   (t) => [index("idx_comptages_terrasse").on(t.terrasseId, t.creeLe)],
 );
+
+// ============================================================
+// Demandes de photo (migration 0021) : le gérant / propriétaire DEMANDE
+// une photo pour un produit ou une chambre ; le super-admin colle
+// l'adresse (URL) et valide. Aucune image n'est stockée (docs/PHOTOS.md).
+// ============================================================
+export const demandesPhoto = pgTable(
+  "demandes_photo",
+  {
+    id: id(),
+    terrasseId: varchar("terrasse_id", { length: 40 }).notNull(),
+    cible: varchar("cible", { length: 10 }).notNull(), // PRODUIT | CHAMBRE
+    cibleId: varchar("cible_id", { length: 40 }).notNull(),
+    demandeurId: varchar("demandeur_id", { length: 40 }).notNull(),
+    note: varchar("note", { length: 300 }),
+    statut: varchar("statut", { length: 10 }).notNull().default("EN_ATTENTE"), // EN_ATTENTE | VALIDEE | REFUSEE | ANNULEE
+    url: varchar("url", { length: 500 }),
+    motifRefus: varchar("motif_refus", { length: 200 }),
+    creeLe: iso("cree_le").notNull(),
+    traiteLe: isoNul("traite_le"),
+    traitePar: varchar("traite_par", { length: 40 }),
+  },
+  (t) => [
+    index("idx_demandes_photo_statut").on(t.statut, t.creeLe),
+    index("idx_demandes_photo_terrasse").on(t.terrasseId, t.creeLe),
+    // Une seule demande EN_ATTENTE par produit / chambre (tranche les doubles clics)
+    uniqueIndex("uq_demandes_photo_attente").on(t.cible, t.cibleId).where(sql`statut = 'EN_ATTENTE'`),
+  ],
+);

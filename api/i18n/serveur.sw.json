@@ -132,7 +132,6 @@
   "Cette chambre n'appartient pas à cet établissement.": "Chumba hiki si cha mahali hapa.",
   "Session client invalide.": "Kipindi cha mteja si sahihi.",
   "Cette chambre n'est plus disponible.": "Chumba hiki hakipatikani tena.",
-  "Photo trop lourde : 5 Mo maximum.": "Picha ni kubwa mno: upeo wa MB 5.",
   "Aucun séjour en cours.": "Hakuna makazi yanayoendelea.",
   "La caisse d'un gérant est validée par le propriétaire.": "Kasha ya meneja inathibitishwa na mmiliki.",
   "Vous n'avez pas le rôle requis pour cette opération.": "Huna jukumu linalohitajika kwa kitendo hiki.",
@@ -234,5 +233,8 @@
   "Aucun bon de sortie pour ce plan.": "Hakuna hati ya kutoa bidhaa kwa mpango huu.",
   "Démarrez le plan d'abord.": "Anzisha mpango kwanza.",
   "Écart d'inventaire : {} — écart de {}{} {}.": "Tofauti ya hesabu ya hisa: {1} — tofauti ya {2}{3} {4}.",
-  "Données invalides — vérifiez les champs saisis.": "Data si sahihi — kagua sehemu ulizojaza."
+  "Données invalides — vérifiez les champs saisis.": "Data si sahihi — kagua sehemu ulizojaza.",
+  "Une demande de photo est déjà en attente pour cet élément.": "Tayari kuna ombi la picha linalosubiri kwa kitu hiki.",
+  "L'adresse de la photo doit être un lien https:// valide (500 caractères maximum).": "Anwani ya picha lazima iwe kiungo halali cha https:// (herufi 500 upeo).",
+  "Motif obligatoire pour refuser une demande de photo.": "Sababu inahitajika ili kukataa ombi la picha."
 }

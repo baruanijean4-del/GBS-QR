@@ -75,6 +75,7 @@ export const ARTEFACTS_REQUIS: readonly { type: "table" | "colonne"; nom: string
   { type: "table", nom: "traiteur_comptages" }, // 0019
   { type: "colonne", nom: "produits.cout_achat_usd" }, // 0019
   { type: "colonne", nom: "encaissements.versement_id" }, // 0020
+  { type: "table", nom: "demandes_photo" }, // 0021
 ];
 
 /** Pur : artefacts requis absents d'un ensemble de noms présents. */
@@ -107,6 +108,7 @@ const JOURNAL: readonly { hash: string; when: number }[] = [
   { hash: "5fff4d9a84985cec5c609cc6d617b1c0a45e193c5c72c8ca19aa1d818dd1fdc2", when: 1792570737821 },
   { hash: "d9293eee4ecbededee0b3032c285670fed1c95d569a66a478465a816c1c63485", when: 1792572943367 },
   { hash: "389893af141104a6c366f1bbd5278bd7e897ec10a64e61d19d037fe337acf7ab", when: 1792600000000 },
+  { hash: "48654c1099f57c695e15f315eaa769a016220b03085d90906c8c8ce8c25e0a44", when: 1792700000000 },
 ];
 
 let schemaPret: Promise<void> | null = null;
@@ -149,7 +151,7 @@ export function assurerSchema(): Promise<void> {
             `Application automatique DÉSACTIVÉE — appliquer explicitement : npm run db:migrate`,
           );
         }
-        console.log("[boot] schéma vérifié (production : lecture seule, 0006-0020 présents).");
+        console.log("[boot] schéma vérifié (production : lecture seule, 0006-0021 présents).");
         return;
       }
 
@@ -650,6 +652,28 @@ export function assurerSchema(): Promise<void> {
       // Corps identique à db/migrations/0020_versement-gerant.sql.
       await db.execute(sql`ALTER TABLE encaissements ADD COLUMN IF NOT EXISTS versement_id varchar(40)`);
 
+      // --- Migration 0021 : demandes de photo (corps identique à
+      // db/migrations/0021_demandes-photo.sql).
+      await db.execute(sql`
+        CREATE TABLE IF NOT EXISTS demandes_photo (
+          id varchar(40) PRIMARY KEY NOT NULL,
+          terrasse_id varchar(40) NOT NULL,
+          cible varchar(10) NOT NULL,
+          cible_id varchar(40) NOT NULL,
+          demandeur_id varchar(40) NOT NULL,
+          note varchar(300),
+          statut varchar(10) DEFAULT 'EN_ATTENTE' NOT NULL,
+          url varchar(500),
+          motif_refus varchar(200),
+          cree_le varchar(30) NOT NULL,
+          traite_le varchar(30),
+          traite_par varchar(40)
+        )
+      `);
+      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_demandes_photo_statut ON demandes_photo (statut, cree_le)`);
+      await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_demandes_photo_terrasse ON demandes_photo (terrasse_id, cree_le)`);
+      await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS uq_demandes_photo_attente ON demandes_photo (cible, cible_id) WHERE statut = 'EN_ATTENTE'`);
+
 
       // --- Journal drizzle : marque les migrations présentes ----
       // (une base existante a forcément 0000-0004 ; 0005-0007 sont
@@ -672,7 +696,7 @@ export function assurerSchema(): Promise<void> {
           )
         `);
       }
-      console.log("[boot] schéma vérifié (migrations 0006-0020 assurées).");
+      console.log("[boot] schéma vérifié (migrations 0006-0021 assurées).");
     })().catch((e) => {
       schemaPret = null; // prochain appel : nouvelle tentative
       throw e;

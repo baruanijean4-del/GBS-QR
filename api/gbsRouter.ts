@@ -1130,7 +1130,9 @@ export const gbsRouter = createRouter({
       variante: z.string().trim().max(60).optional(),
       consignable: z.boolean().optional(),
       bouteillesParCasier: z.number().int().min(1).max(48).optional(),
-      photoUrl: z.string().trim().max(2_000_000).optional(), // 2 Mo pour accepter le base64
+      // Adresse d'une image (catalogue ou lien https) — jamais une image encodée : la photo d'un produit
+      // passe par une demande validée par le super-admin (routeur photos).
+      photoUrl: z.string().trim().max(500).refine((v) => !v.startsWith("data:"), "Adresse de photo invalide.").optional(),
       // Boucle 3 — formulaire adaptatif : champs optionnels par type
       typeProduit: z.enum(["MARCHANDISE", "CHAMBRE", "SERVICE", "BILLARD"]).optional(),
       unite: z.string().trim().max(20).optional(),

@@ -20,6 +20,7 @@ import {
 } from '@/lib/store'
 import type { PlanCode, Portee, Tranche } from '@/lib/types'
 import { CLE_PIN_ADMIN } from '@/lib/constantes'
+import { PhotosAdmin, useNbDemandesPhoto } from './PhotosAdmin'
 
 export function VueAdmin() {
   const [pin, setPin] = useState(() => sessionStorage.getItem(CLE_PIN_ADMIN) ?? '')
@@ -66,7 +67,8 @@ function VueAdminInterne({ pin }: { pin: string }) {
   const t = useT()
   const db = useDB()
   const pret = useDBPret()
-  const [onglet, setOnglet] = useState<'paiements' | 'terrasses' | 'abonnes' | 'tarifs' | 'erreurs' | 'pin'>('paiements')
+  const [onglet, setOnglet] = useState<'paiements' | 'photos' | 'terrasses' | 'abonnes' | 'tarifs' | 'erreurs' | 'pin'>('paiements')
+  const nbDemandesPhoto = useNbDemandesPhoto(pin)
   const [delai, setDelai] = useState(false)
   const [pdfEnCours, setPdfEnCours] = useState(false)
   useEffect(() => {
@@ -153,8 +155,8 @@ function VueAdminInterne({ pin }: { pin: string }) {
         </GrosBouton>
       </div>
 
-      <div className="mt-4 flex gap-2 px-4">
-        {([['paiements', t('admin.onglet_paiements', { n: enAttente.length })], ['terrasses', t('admin.onglet_terrasses')], ['abonnes', t('admin.onglet_abonnes')], ['tarifs', t('admin.onglet_tarifs')], ['erreurs', t('admin.onglet_erreurs')], ['pin', t('admin.onglet_pin')]] as const).map(([id, label]) => (
+      <div className="mt-4 flex flex-wrap gap-2 px-4">
+        {([['paiements', t('admin.onglet_paiements', { n: enAttente.length })], ['photos', t('admin.onglet_photos', { n: nbDemandesPhoto })], ['terrasses', t('admin.onglet_terrasses')], ['abonnes', t('admin.onglet_abonnes')], ['tarifs', t('admin.onglet_tarifs')], ['erreurs', t('admin.onglet_erreurs')], ['pin', t('admin.onglet_pin')]] as const).map(([id, label]) => (
           <button
             key={id}
             onClick={() => setOnglet(id)}
@@ -169,6 +171,7 @@ function VueAdminInterne({ pin }: { pin: string }) {
         {/* Chaque panneau est un bloc protégé : une liste qui plante
             n'emporte ni la page admin ni les autres onglets */}
         {onglet === 'paiements' && <BlocBoundary><PaiementsAdmin pin={pin} /></BlocBoundary>}
+        {onglet === 'photos' && <BlocBoundary><PhotosAdmin pin={pin} /></BlocBoundary>}
         {onglet === 'terrasses' && <BlocBoundary><TerrassesAdmin /></BlocBoundary>}
         {onglet === 'abonnes' && <BlocBoundary><AbonnesAdmin /></BlocBoundary>}
         {onglet === 'tarifs' && <BlocBoundary><TarifsAdmin pin={pin} /></BlocBoundary>}

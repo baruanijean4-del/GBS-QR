@@ -32,7 +32,7 @@ import { PLANS, plansPour, prixMensuelTerrasse, seuilSuivant, tarifDe, tranchePo
 import {
   FournisseurPortee, ajusterStock, archiverTable, basculerAffectation, basculerProduitActif, chiffreAffaires, creerInvitation,
   creerProduit, creerTable, enregistrerCodeBarres, estProprietaire, marquerAlertesLues, masquerAvis,
-  modifierPrix, organisationDe, produitUploadPhoto, rechercherParCodeBarres, revoquerAppareil, revoquerInvitation, rolesSur,
+  modifierPrix, organisationDe, rechercherParCodeBarres, revoquerAppareil, revoquerInvitation, rolesSur,
   soumettrePaiement, terrasseDe, terrassesDe, traiterDemandeStock, useDB, useSession, utilisateurDe, valeurStock, ventesDuJour,
   decalerJour, encaisseParServeuse, etatStock, picAffluence, ventesCumuleesJour, ventesSemaine, ventesSemainePrecedente,
 } from '@/lib/store'
@@ -43,6 +43,7 @@ import {
   TYPES_SANS_STOCK, type CategorieProduit, type RoleEtablissement, type TypeProduit,
 } from '@contracts/types'
 import { LOCALES, useI18n, useT, vocabulaireDe } from '@/i18n'
+import { BoutonDemandePhoto } from '@/components/DemandePhoto'
 import type { DB, Paiement, Portee, Produit, SessionLocale, Terrasse, TypeMouvement, Utilisateur } from '@/lib/types'
 
 export function VueProprio() {
@@ -1093,36 +1094,26 @@ function FeuilleEdition({ produit, surFermer }: { produit: Produit; surFermer: (
   return (
     <Feuille ouvert surFermer={surFermer} titre={produit.nom}>
       <div className="flex flex-col gap-4">
-        {/* Photo du produit (menu client) : WebP 800×800 généré côté serveur */}
-        <div className="flex items-center gap-4 rounded-2xl border border-white/10 p-3">
-          {produit.photoUrl ? (
-            <img src={produit.photoThumbnailUrl ?? produit.photoUrl} alt={produit.nom} className="h-16 w-16 rounded-xl object-cover" />
-          ) : (
-            <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-white/5 text-sable/40">
-              <Camera className="h-6 w-6" />
+        {/* Photo du produit (menu client) : toujours une URL, posée par le super-admin après demande */}
+        <div className="rounded-2xl border border-white/10 p-3">
+          <div className="flex items-center gap-4">
+            {produit.photoUrl ? (
+              <img src={produit.photoThumbnailUrl ?? produit.photoUrl} alt={produit.nom} className="h-16 w-16 rounded-xl object-cover" />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-white/5 text-sable/40">
+                <Camera className="h-6 w-6" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-white">{t('proprio.photo_produit')}</p>
+              <p className="text-xs text-sable/60">
+                {t('proprio.photo_source', { source: produit.photoSource === 'UPLOAD' || produit.photoSource === 'URL' ? t('proprio.photo_perso') : t('proprio.photo_generique') })}
+              </p>
             </div>
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-white">{t('proprio.photo_produit')}</p>
-            <p className="text-xs text-sable/60">
-              {t('proprio.photo_source', { source: produit.photoSource === 'UPLOAD' ? t('proprio.photo_perso') : t('proprio.photo_generique') })}
-            </p>
           </div>
-          <label className="flex h-11 cursor-pointer items-center gap-2 rounded-full bg-ambre px-4 text-sm font-bold text-sur-ambre active:bg-ambre-actif">
-            <Camera className="h-4 w-4" /> {t('proprio.changer')}
-            <input
-              type="file" accept="image/*" className="hidden"
-              onChange={async (e) => {
-                const f = e.target.files?.[0]
-                e.target.value = ''
-                if (!f) return
-                try {
-                  await produitUploadPhoto(produit.id, f)
-                  toast.success(t('proprio.photo_ok'))
-                } catch (err) { toast.error(err instanceof Error ? err.message : t('commun.erreur')) }
-              }}
-            />
-          </label>
+          <div className="mt-3">
+            <BoutonDemandePhoto cible="PRODUIT" cibleId={produit.id} terrasseId={produit.terrasseId} libelle={produit.nom} />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

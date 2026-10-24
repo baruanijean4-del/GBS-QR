@@ -132,7 +132,6 @@
   "Cette chambre n'appartient pas à cet établissement.": "This room does not belong to this venue.",
   "Session client invalide.": "Invalid customer session.",
   "Cette chambre n'est plus disponible.": "This room is no longer available.",
-  "Photo trop lourde : 5 Mo maximum.": "Photo too large: 5 MB maximum.",
   "Aucun séjour en cours.": "No stay in progress.",
   "La caisse d'un gérant est validée par le propriétaire.": "A manager's cash is validated by the owner.",
   "Vous n'avez pas le rôle requis pour cette opération.": "You do not have the required role for this operation.",
@@ -234,5 +233,8 @@
   "Aucun bon de sortie pour ce plan.": "No release slip for this plan.",
   "Démarrez le plan d'abord.": "Start the plan first.",
   "Écart d'inventaire : {} — écart de {}{} {}.": "Inventory discrepancy: {1} — difference of {2}{3} {4}.",
-  "Données invalides — vérifiez les champs saisis.": "Invalid data — check the fields you entered."
+  "Données invalides — vérifiez les champs saisis.": "Invalid data — check the fields you entered.",
+  "Une demande de photo est déjà en attente pour cet élément.": "A photo request is already pending for this item.",
+  "L'adresse de la photo doit être un lien https:// valide (500 caractères maximum).": "The photo address must be a valid https:// link (500 characters maximum).",
+  "Motif obligatoire pour refuser une demande de photo.": "A reason is required to decline a photo request."
 }

@@ -21,7 +21,6 @@ import * as s from "@db/schema";
 import { montantSejourCdf, type ModeSejour } from "@contracts/hotel";
 import { createRouter, protegee, publicQuery } from "../middleware";
 import { ajouterLignesNoteDb, assurerClientDb, encaisserNoteDb, exigerTelephoneSiGrosseNoteDb, finaliserLigneSejourDb, noteOuverteDb, ouvrirNoteSejourDb, sommesNoteDb } from "./notes";
-import { enregistrerPhotoChambre } from "../services/storage";
 import {
   db, erreur, exigerGerantOuProprio, journaliser, resoudreTableParToken, rolesSurDb, tauxCourantDb,
 } from "../gbsRouter";
@@ -81,7 +80,6 @@ export const hotelRouter = createRouter({
       type: z.enum(["SIMPLE", "DOUBLE", "SUITE"]).default("SIMPLE"),
       prixNuitCdf: z.number().int().positive().max(100_000_000),
       prixHeureCdf: z.number().int().positive().max(100_000_000).nullable().optional(),
-      photoUrl: z.string().max(500).nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const acteurId = ctx.session.utilisateurId;
@@ -94,7 +92,6 @@ export const hotelRouter = createRouter({
         id: uid("cha"), terrasseId: input.terrasseId, numero: input.numero.trim(),
         type: input.type, statut: "LIBRE",
         prixNuitCdf: input.prixNuitCdf, prixHeureCdf: input.prixHeureCdf ?? null,
-        photoUrl: input.photoUrl ?? null,
         creeLe: maintenant(),
       }).returning();
 
@@ -371,11 +368,10 @@ export const hotelRouter = createRouter({
       return chambres;
     }),
 
-  /** Direction : modifie une chambre (photo, prix, type). */
+  /** Direction : modifie une chambre (prix, type). La photo passe par une demande (routeur photos). */
   modifierChambre: protegee
     .input(z.object({
       chambreId: z.string(),
-      photoUrl: z.string().max(500).nullable().optional(),
       prixNuitCdf: z.number().int().positive().max(100_000_000).optional(),
       prixHeureCdf: z.number().int().positive().max(100_000_000).nullable().optional(),
       type: z.enum(["SIMPLE", "DOUBLE", "SUITE"]).optional(),
@@ -388,7 +384,6 @@ export const hotelRouter = createRouter({
       const role = await exigerGerantOuProprio(acteurId, chambre.terrasseId);
       
       const maj: Record<string, unknown> = {};
-      if (input.photoUrl !== undefined) maj.photoUrl = input.photoUrl;
       if (input.prixNuitCdf !== undefined) maj.prixNuitCdf = input.prixNuitCdf;
       if (input.prixHeureCdf !== undefined) maj.prixHeureCdf = input.prixHeureCdf;
       if (input.type !== undefined) maj.type = input.type;
@@ -400,35 +395,6 @@ export const hotelRouter = createRouter({
         `Chambre ${chambre.numero} modifiée`,
         { terrasseId: chambre.terrasseId, avant: JSON.stringify(chambre), apres: JSON.stringify(maj) });
       return { ok: true };
-    }),
-
-  /** Upload + traitement de la photo d'une chambre (GERANT / PROPRIETAIRE) */
-  uploadPhotoChambre: protegee
-    .input(z.object({
-      chambreId: z.string().min(1),
-      fichierBase64: z.string().min(64),
-      nomFichier: z.string().max(120).default("photo.jpg"),
-    }))
-    .mutation(async ({ input, ctx }) => {
-      const acteurId = ctx.session.utilisateurId;
-      const [chambre] = await db().select().from(s.chambres)
-        .where(eq(s.chambres.id, input.chambreId)).limit(1);
-      if (!chambre) erreur("Chambre introuvable.");
-      const role = await exigerGerantOuProprio(acteurId, chambre.terrasseId);
-      
-      const TAILLE_MAX_OCTETS = 5 * 1024 * 1024; // 5 Mo
-      const tampon = Buffer.from(input.fichierBase64, "base64");
-      if (tampon.length > TAILLE_MAX_OCTETS) erreur("Photo trop lourde : 5 Mo maximum.");
-      
-      const photos = await enregistrerPhotoChambre(chambre.terrasseId, chambre.id, tampon);
-      
-      await db().update(s.chambres)
-        .set({ photoUrl: photos.photoUrl })
-        .where(eq(s.chambres.id, chambre.id));
-      await journaliser(acteurId, role, "PHOTO_CHAMBRE",
-        `Chambre ${chambre.numero} — photo téléversée (${photos.poidsKo} Ko${photos.traitee ? "" : ", non traitée"})`);
-      
-      return { photoUrl: photos.photoUrl };
     }),
 
   /** Client : prolonge son séjour (ajoute une nuit ou une heure à la note). */

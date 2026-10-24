@@ -365,7 +365,9 @@ export type TypeMouvement =
   | "TRAITEUR";
 
 /** Provenance de la photo d'un produit */
-export type SourcePhoto = "CATALOGUE" | "UPLOAD";
+/** CATALOGUE = image générique ; URL = adresse posée par le super-admin après demande ;
+ *  UPLOAD = ancien envoi de fichier (supprimé, gardé pour les photos déjà en base). */
+export type SourcePhoto = "CATALOGUE" | "UPLOAD" | "URL";
 
 // ---------- Entités ----------
 

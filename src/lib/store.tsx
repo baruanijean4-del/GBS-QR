@@ -769,20 +769,6 @@ export function enregistrerCodeBarres(params: {
   return exec(api.catalogue.enregistrerCodeBarres.mutate(params))
 }
 
-// ---------- Photos produits (étape 5) ----------
-
-/** Téléverse la photo d'un produit (max 5 Mo, convertie en WebP côté serveur) */
-export async function produitUploadPhoto(produitId: string, fichier: File) {
-  if (fichier.size > 5 * 1024 * 1024) throw new Error(traduire('erreur.photo_lourde'))
-  const fichierBase64 = await new Promise<string>((resolve, reject) => {
-    const lecteur = new FileReader()
-    lecteur.onload = () => resolve(String(lecteur.result).split(',')[1] ?? '')
-    lecteur.onerror = () => reject(new Error(traduire('erreur.lecture_fichier')))
-    lecteur.readAsDataURL(fichier)
-  })
-  return exec(api.produits.uploadPhoto.mutate({ produitId, fichierBase64, nomFichier: fichier.name }))
-}
-
 // ---------- Abonnement / plateforme ----------
 
 export function soumettrePaiement(
@@ -869,29 +855,18 @@ export function voirNouvellesCommandes(terrasseId: string) {
 export function creerChambreHotel(input: {
   terrasseId: string; numero: string; type: 'SIMPLE' | 'DOUBLE' | 'SUITE';
   prixNuitCdf: number; prixHeureCdf: number | null;
-  photoUrl?: string | null;
 }) {
   return exec(api.hotel.creerChambre.mutate(input))
 }
 
-/** Direction : modifie une chambre (photo, prix, type) */
+/** Direction : modifie une chambre (prix, type). La photo passe par une demande (BoutonDemandePhoto). */
 export function modifierChambreHotel(input: {
   chambreId: string;
-  photoUrl?: string | null;
   prixNuitCdf?: number;
   prixHeureCdf?: number | null;
   type?: 'SIMPLE' | 'DOUBLE' | 'SUITE';
 }) {
   return exec(api.hotel.modifierChambre.mutate(input))
-}
-
-/** Direction : upload la photo d'une chambre (base64) */
-export function uploadPhotoChambre(input: {
-  chambreId: string;
-  fichierBase64: string;
-  nomFichier?: string;
-}) {
-  return exec(api.hotel.uploadPhotoChambre.mutate(input))
 }
 
 /** Réception : check-in (nom + pièce d'identité, nuitée ou heure) */

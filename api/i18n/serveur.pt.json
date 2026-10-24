@@ -132,7 +132,6 @@
   "Cette chambre n'appartient pas à cet établissement.": "Este quarto não pertence a este estabelecimento.",
   "Session client invalide.": "Sessão de cliente inválida.",
   "Cette chambre n'est plus disponible.": "Este quarto já não está disponível.",
-  "Photo trop lourde : 5 Mo maximum.": "Foto demasiado pesada: máximo 5 MB.",
   "Aucun séjour en cours.": "Nenhuma estadia em curso.",
   "La caisse d'un gérant est validée par le propriétaire.": "A caixa de um gerente é validada pelo proprietário.",
   "Vous n'avez pas le rôle requis pour cette opération.": "Não tem a função necessária para esta operação.",
@@ -234,5 +233,8 @@
   "Aucun bon de sortie pour ce plan.": "Nenhum vale de saída para este plano.",
   "Démarrez le plan d'abord.": "Inicie primeiro o plano.",
   "Écart d'inventaire : {} — écart de {}{} {}.": "Desvio de inventário: {1} — desvio de {2}{3} {4}.",
-  "Données invalides — vérifiez les champs saisis.": "Dados inválidos — verifique os campos preenchidos."
+  "Données invalides — vérifiez les champs saisis.": "Dados inválidos — verifique os campos preenchidos.",
+  "Une demande de photo est déjà en attente pour cet élément.": "Já existe um pedido de foto pendente para este item.",
+  "L'adresse de la photo doit être un lien https:// valide (500 caractères maximum).": "O endereço da foto tem de ser uma ligação https:// válida (máximo 500 caracteres).",
+  "Motif obligatoire pour refuser une demande de photo.": "Motivo obrigatório para recusar um pedido de foto."
 }

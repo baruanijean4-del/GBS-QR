@@ -2,7 +2,7 @@
 import { gbsRouter } from "./gbsRouter";
 import { etablissementsRouter } from "./routers/etablissements";
 import { catalogueRouter } from "./routers/catalogue";
-import { produitsRouter } from "./routers/produits";
+import { photosRouter } from "./routers/photos";
 import { billardRouter } from "./routers/billard";
 import { hotelRouter } from "./routers/hotel";
 import { comptabiliteRouter } from "./routers/comptabilite";
@@ -16,7 +16,7 @@ export const appRouter = createRouter({
   gbs: gbsRouter,
   etablissements: etablissementsRouter,
   catalogue: catalogueRouter,
-  produits: produitsRouter,
+  photos: photosRouter,
   billard: billardRouter,
   hotel: hotelRouter,
   comptabilite: comptabiliteRouter,

@@ -20,6 +20,7 @@ import {
 import { toast } from 'sonner'
 import { trpc } from '@/providers/trpc'
 import { useT } from '@/i18n'
+import { BoutonDemandePhoto } from '@/components/DemandePhoto'
 import {
   Carte, Chargement, Confirmation, Feuille, GrosBouton, Pill, SaisieNombre, Vide, classeSaisie,
 } from '@/components/gbs'
@@ -27,7 +28,7 @@ import { montantSejourCdf, type ModeSejour, type StatutChambre } from '@contract
 import { fmtCDF, ilYA } from '@/lib/format'
 import {
   FournisseurPortee, checkInChambre, checkOutSejour, creerChambreHotel,
-  marquerChambreNettoyee, modifierChambreHotel, useSession,
+  marquerChambreNettoyee, useSession,
 } from '@/lib/store'
 import { BoutonDeconnexion, CoquilleRole, PorteRole } from '@/components/Coquille'
 import { BlocCaisse } from '@/components/Caisse'
@@ -169,6 +170,7 @@ export function PanneauHotel({ terrasseId, mode }: { terrasseId: string; mode: M
       {modification && (
         <FeuilleModification
           chambre={modification}
+          terrasseId={terrasseId}
           surFermer={() => setModification(null)}
           surFait={() => { setModification(null); void chambres.refetch() }}
         />
@@ -335,7 +337,6 @@ function FeuilleCreation({ terrasseId, surFermer, surFait }: {
   const [type, setType] = useState<'SIMPLE' | 'DOUBLE' | 'SUITE'>('SIMPLE')
   const [prixNuit, setPrixNuit] = useState('')
   const [prixHeure, setPrixHeure] = useState('')
-  const [photoUrl, setPhotoUrl] = useState('')
   const [charge, setCharge] = useState(false)
 
   const prixN = parseInt(prixNuit, 10)
@@ -364,16 +365,6 @@ function FeuilleCreation({ terrasseId, surFermer, surFait }: {
         <SaisieNombre valeur={prixNuit} onChange={setPrixNuit} placeholder="40000" />
         <label className="text-xs font-bold uppercase tracking-widest text-sable/50">{t('hotel.prix_heure')}</label>
         <SaisieNombre valeur={prixHeure} onChange={setPrixHeure} placeholder={t('hotel.prix_heure_ph')} />
-        <label className="text-xs font-bold uppercase tracking-widest text-sable/50">{t('hotel.photo_url')}</label>
-        <input
-          className={classeSaisie}
-          value={photoUrl}
-          onChange={(e) => setPhotoUrl(e.target.value)}
-          placeholder="https://example.com/photo.jpg"
-        />
-        {photoUrl && !photoUrl.startsWith('data:') && (
-          <img src={photoUrl} alt={t('hotel.chambre_mot')} className="h-32 w-full rounded-xl object-cover" />
-        )}
         <GrosBouton
           charge={charge}
           desactive={!valide}
@@ -382,7 +373,7 @@ function FeuilleCreation({ terrasseId, surFermer, surFait }: {
             setCharge(true)
             void (async () => {
               try {
-                await creerChambreHotel({ terrasseId, numero: numero.trim(), type, prixNuitCdf: prixN, prixHeureCdf: prixH, photoUrl: photoUrl.trim() || null })
+                await creerChambreHotel({ terrasseId, numero: numero.trim(), type, prixNuitCdf: prixN, prixHeureCdf: prixH })
                 toast.success(t('hotel.chambre_creee', { n: numero.trim() }))
                 surFait()
               } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
@@ -450,46 +441,20 @@ function EspaceHotel({ moi, terrasse }: { moi: Utilisateur; terrasse: Terrasse }
 
 // ---------- Feuille de modification (direction) ----------
 
-function FeuilleModification({ chambre, surFermer, surFait }: {
+function FeuilleModification({ chambre, terrasseId, surFermer }: {
   chambre: ChambreVue
+  terrasseId: string
   surFermer: () => void
-  surFait: () => void
+  surFait?: () => void
 }) {
   const t = useT()
-  const [photoUrl, setPhotoUrl] = useState(chambre.photoUrl ?? '')
-  const [charge, setCharge] = useState(false)
-
   return (
-    <Feuille ouvert surFermer={surFermer} titre={t('hotel.modifier_chambre', { n: chambre.numero })}>
+    <Feuille ouvert surFermer={surFermer} titre={t('hotel.photo_chambre_titre', { n: chambre.numero })}>
       <div className="flex flex-col gap-3">
-        <label className="text-xs font-bold uppercase tracking-widest text-sable/50">{t('hotel.photo_url')}</label>
-        <input
-          className={classeSaisie}
-          value={photoUrl}
-          onChange={(e) => setPhotoUrl(e.target.value)}
-          placeholder="https://example.com/photo.jpg"
-        />
-        {photoUrl && !photoUrl.startsWith('data:') && (
-          <img src={photoUrl} alt={t('hotel.chambre_n', { n: chambre.numero })} className="h-32 w-full rounded-xl object-cover" />
+        {chambre.photoUrl && (
+          <img src={chambre.photoUrl} alt={t('hotel.chambre_n', { n: chambre.numero })} className="h-40 w-full rounded-xl object-cover" />
         )}
-        <GrosBouton
-          charge={charge}
-          onClick={() => {
-            if (charge) return
-            setCharge(true)
-            void (async () => {
-              try {
-                // On envoie simplement l'URL (ou null si vide)
-                await modifierChambreHotel({ chambreId: chambre.id, photoUrl: photoUrl.trim() || null })
-                toast.success(t('hotel.photo_maj'))
-                surFait()
-              } catch (e) { toast.error(e instanceof Error ? e.message : t('commun.erreur')) }
-              finally { setCharge(false) }
-            })()
-          }}
-        >
-          Enregistrer
-        </GrosBouton>
+        <BoutonDemandePhoto cible="CHAMBRE" cibleId={chambre.id} terrasseId={terrasseId} libelle={t('hotel.chambre_n', { n: chambre.numero })} />
       </div>
     </Feuille>
   )
